@@ -194,15 +194,15 @@ class StringInput:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "text": ("STRING", {"default": ""}),
+                "value": ("STRING", {"default": ""}),
             }
         }
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "string_input"
 
-    def string_input(self, text):
-        return text
+    def string_input(self, value):
+        return value
 
 
 class IntegerInput:
@@ -210,15 +210,15 @@ class IntegerInput:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "number": ("INT", {"default": 0}),
+                "value": ("INT", {"default": 0}),
             }
         }
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
 
-    def identity(self, number):
-        return number
+    def identity(self, value):
+        return value
 
 
 class FloatInput:
@@ -226,15 +226,15 @@ class FloatInput:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "number": ("FLOAT", {"default": 0.0}),
+                "value": ("FLOAT", {"default": 0.0}),
             }
         }
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
 
-    def identity(self, number):
-        return number
+    def identity(self, value):
+        return value
 
 
 class BooleanInput:
@@ -242,15 +242,15 @@ class BooleanInput:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "boolean": ("BOOLEAN", {"default": False}),
+                "value": ("BOOLEAN", {"default": False}),
             }
         }
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
 
-    def identity(self, boolean):
-        return boolean
+    def identity(self, value):
+        return value
 
 
 class PathInput:
