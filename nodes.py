@@ -17,7 +17,7 @@ class OutputPath:
     OUTPUT_NODE = True
 
     @classmethod
-    def input_types(cls):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "filename": ("STRING", {"default": ""}),
@@ -200,6 +200,7 @@ class StringInput:
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "string_input"
+    CATEGORY = "bentoml/io"
 
     def string_input(self, value):
         return value
@@ -216,6 +217,7 @@ class IntegerInput:
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
+    CATEGORY = "bentoml/io"
 
     def identity(self, value):
         return value
@@ -232,6 +234,7 @@ class FloatInput:
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
+    CATEGORY = "bentoml/io"
 
     def identity(self, value):
         return value
@@ -248,6 +251,7 @@ class BooleanInput:
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
+    CATEGORY = "bentoml/io"
 
     def identity(self, value):
         return value
@@ -264,6 +268,7 @@ class PathInput:
 
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
+    CATEGORY = "bentoml/io"
 
     def identity(self, path):
         return path
