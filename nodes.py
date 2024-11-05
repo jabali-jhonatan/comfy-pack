@@ -10,6 +10,8 @@ import torch
 from PIL import Image, ImageOps, ImageSequence
 from PIL.PngImagePlugin import PngInfo
 
+from .autonode import anytype
+
 
 class OutputPath:
     OUTPUT_NODE = True
@@ -187,14 +189,104 @@ class LoadImage:
         return True
 
 
+class StringInput:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "text": ("STRING", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    FUNCTION = "string_input"
+
+    def string_input(self, text):
+        return text
+
+
+class IntegerInput:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "number": ("INT", {"default": 0}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    FUNCTION = "identity"
+
+    def identity(self, number):
+        return number
+
+
+class FloatInput:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "number": ("FLOAT", {"default": 0.0}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    FUNCTION = "identity"
+
+    def identity(self, number):
+        return number
+
+
+class BooleanInput:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "boolean": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    FUNCTION = "identity"
+
+    def identity(self, boolean):
+        return boolean
+
+
+class PathInput:
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "path": ("STRING", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    FUNCTION = "identity"
+
+    def identity(self, path):
+        return path
+
+
 NODE_CLASS_MAPPINGS = {
     "BentoOutputPath": OutputPath,
     "BentoOutputImage": OutputImage,
     "BentoLoadImage": LoadImage,
+    "BentoStringInput": StringInput,
+    "BentoIntegerInput": IntegerInput,
+    "BentoFloatInput": FloatInput,
+    "BentoBooleanInput": BooleanInput,
+    "BentoPathInput": PathInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "BentoOutputPath": "Bento Output Path",
     "BentoOutputImage": "Bento Output Image",
     "BentoLoadImage": "Bento Load Image",
+    "BentoStringInput": "Bento String Input",
+    "BentoIntegerInput": "Bento Integer Input",
+    "BentoFloatInput": "Bento Float Input",
+    "BentoBooleanInput": "Bento Boolean Input",
+    "BentoPathInput": "Bento Path Input",
 }
