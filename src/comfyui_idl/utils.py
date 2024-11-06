@@ -76,7 +76,7 @@ def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     for id, node in workflow.items():
         for i in node["inputs"].values():
             if isinstance(i, list) and len(i) == 2:  # is a link
-                dep_map[tuple(i)] = id
+                dep_map[tuple(i)] = node
 
     for id, node in workflow.items():
         node["id"] = id
