@@ -36,6 +36,7 @@ class OutputPath:
 
     RETURN_TYPES = ()
     CATEGORY = "bentoml/io"
+    BENTOML_NODE = True
     FUNCTION = "save"
     DESCRIPTION = "Save the input data for bentoml output"
 
@@ -75,7 +76,7 @@ class OutputImage:
 
     RETURN_TYPES = ()
     FUNCTION = "save_images"
-
+    BENTOML_NODE = True
     OUTPUT_NODE = True
 
     CATEGORY = "bentoml/io"
@@ -132,7 +133,7 @@ class LoadImage:
         }
 
     CATEGORY = "bentoml/io"
-
+    BENTOML_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "load_image"
 
@@ -206,6 +207,7 @@ class StringInput:
         }
 
     RETURN_TYPES = ("STRING",)
+    BENTOML_NODE = True
     FUNCTION = "string_input"
     CATEGORY = "bentoml/io"
 
@@ -228,6 +230,7 @@ class IntegerInput:
 
     RETURN_TYPES = ("INT",)
     FUNCTION = "identity"
+    BENTOML_NODE = True
     CATEGORY = "bentoml/io"
 
     def identity(self, value):
@@ -249,6 +252,7 @@ class FloatInput:
 
     RETURN_TYPES = ("FLOAT",)
     FUNCTION = "identity"
+    BENTOML_NODE = True
     CATEGORY = "bentoml/io"
 
     def identity(self, value):
@@ -271,6 +275,7 @@ class BooleanInput:
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
+    BENTOML_NODE = True
 
     def identity(self, value):
         return (value,)
@@ -291,6 +296,7 @@ class PathInput:
 
     RETURN_TYPES = ("BOOLEAN",)
     FUNCTION = "identity"
+    BENTOML_NODE = True
     CATEGORY = "bentoml/io"
 
     def identity(self, path):
@@ -304,21 +310,21 @@ class PathInput:
 NODE_CLASS_MAPPINGS = {
     "BentoOutputPath": OutputPath,
     "BentoOutputImage": OutputImage,
-    "BentoLoadImage": LoadImage,
-    "BentoStringInput": StringInput,
-    "BentoIntegerInput": IntegerInput,
-    "BentoFloatInput": FloatInput,
-    "BentoBooleanInput": BooleanInput,
-    "BentoPathInput": PathInput,
+    "BentoInputImage": LoadImage,
+    "BentoInputString": StringInput,
+    "BentoInputInteger": IntegerInput,
+    "BentoInputFloat": FloatInput,
+    "BentoInputBoolean": BooleanInput,
+    "BentoInputPath": PathInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "BentoOutputPath": "Bento Output Path",
-    "BentoOutputImage": "Bento Output Image",
-    "BentoLoadImage": "Bento Load Image",
-    "BentoStringInput": "Bento String Input",
-    "BentoIntegerInput": "Bento Integer Input",
-    "BentoFloatInput": "Bento Float Input",
-    "BentoBooleanInput": "Bento Boolean Input",
-    "BentoPathInput": "Bento Path Input",
+    "BentoOutputPath": "Bento Path Output",
+    "BentoOutputImage": "Bento Image Output",
+    "BentoInputImage": "Bento Load Image",
+    "BentoInputString": "Bento String Input",
+    "BentoInputInteger": "Bento Integer Input",
+    "BentoInputFloat": "Bento Float Input",
+    "BentoInputBoolean": "Bento Boolean Input",
+    "BentoInputPath": "Bento Path Input",
 }

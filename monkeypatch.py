@@ -13,7 +13,7 @@ def store_bentoml_value(func):
         inputs, class_def, unique_id, outputs=None, dynprompt=None, extra_data={}
     ):
         global BENTOML_LAST_ID
-        if hasattr(class_def, "BENTOML_NODE"):
+        if getattr(class_def, "BENTOML_NODE", False):
             with _lock:
                 BENTOML_LAST_ID = unique_id
         if outputs is None:
