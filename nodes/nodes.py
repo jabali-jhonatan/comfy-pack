@@ -208,8 +208,8 @@ class StringInput:
             }
         }
 
-    RETURN_TYPES = ("STRING",)
     RETUEN_NAMES = ("string",)
+    RETURN_TYPES = (anytype,)
     BENTOML_NODE = True
     FUNCTION = "string_input"
     CATEGORY = "bentoml/io"
@@ -232,8 +232,8 @@ class IntegerInput:
             }
         }
 
-    RETURN_TYPES = ("INT",)
     RETUEN_NAMES = ("int",)
+    RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "bentoml/io"
@@ -256,8 +256,8 @@ class FloatInput:
             }
         }
 
-    RETURN_TYPES = ("FLOAT",)
     RETUEN_NAMES = ("float",)
+    RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "bentoml/io"
@@ -280,8 +280,8 @@ class BooleanInput:
             }
         }
 
-    RETURN_TYPES = ("BOOLEAN",)
     RETUEN_NAMES = ("bool",)
+    RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
     BENTOML_NODE = True
