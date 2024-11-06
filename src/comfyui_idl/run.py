@@ -54,8 +54,6 @@ class WorkflowRunner:
             self.output_dir,
             "--temp-directory",
             self.temp_dir,
-            "--port",
-            "0",
         ]
         if subprocess.run(command, check=True):
             self.is_running = True
