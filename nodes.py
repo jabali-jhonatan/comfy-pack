@@ -29,7 +29,7 @@ class OutputPath:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "filename": ("STRING", {"default": ""}),
+                "filename": ("STRING", {"default": "", "forceInput": True}),
                 "filename_prefix": ("STRING", {"default": "BentoML"}),
             },
         }
@@ -52,6 +52,7 @@ class OutputPath:
         basename = os.path.basename(filename)
         new_filename = os.path.join(subfolder, f"{prefix}_{basename}")
         shutil.copy2(filename, new_filename)
+        return ()
 
 
 class OutputImage:
