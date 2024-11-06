@@ -105,7 +105,7 @@ class WorkflowRunner:
             "comfy",
             "run",
             "--workflow",
-            workflow_file_path,
+            workflow_file_path.as_posix(),
             "--timeout",
             str(timeout),
             "--wait",
