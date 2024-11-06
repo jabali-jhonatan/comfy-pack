@@ -41,7 +41,7 @@ class OutputPath:
     DESCRIPTION = "Save the input data for bentoml output"
 
     def save(self, filename, filename_prefix):
-        if not not filename_prefix:
+        if not filename_prefix:
             return ()
 
         subfolder, prefix = os.path.split(filename_prefix)
@@ -50,7 +50,7 @@ class OutputPath:
         else:
             subfolder = os.path.dirname(filename)
         basename = os.path.basename(filename)
-        new_filename = os.path.join(subfolder, f"{prefix}_{basename}")
+        new_filename = os.path.join(subfolder, f"{prefix}{basename}")
         shutil.copy2(filename, new_filename)
         return ()
 
