@@ -217,6 +217,7 @@ class StringInput:
     @classmethod
     def VALIDATE_INPUTS(s, value):
         set_bentoml_output([(value,)])
+        return True
 
 
 class IntegerInput:
@@ -239,6 +240,7 @@ class IntegerInput:
     @classmethod
     def VALIDATE_INPUTS(s, value):
         set_bentoml_output([(value,)])
+        return True
 
 
 class FloatInput:
@@ -261,6 +263,7 @@ class FloatInput:
     @classmethod
     def VALIDATE_INPUTS(s, value):
         set_bentoml_output([(value,)])
+        return True
 
 
 class BooleanInput:
@@ -272,7 +275,7 @@ class BooleanInput:
             }
         }
 
-    RETURN_TYPES = (anytype,)
+    RETURN_TYPES = ("BOOLEAN",)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
     BENTOML_NODE = True
@@ -283,6 +286,7 @@ class BooleanInput:
     @classmethod
     def VALIDATE_INPUTS(s, value):
         set_bentoml_output([(value,)])
+        return True
 
 
 class PathInput:
@@ -294,7 +298,7 @@ class PathInput:
             }
         }
 
-    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "bentoml/io"
@@ -305,6 +309,7 @@ class PathInput:
     @classmethod
     def VALIDATE_INPUTS(s, path):
         set_bentoml_output([(path,)])
+        return True
 
 
 NODE_CLASS_MAPPINGS = {
