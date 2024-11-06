@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 import copy
 
+__version__ = "0.1.0"
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
@@ -69,7 +70,7 @@ def configure_workflow_outputs(workflow: dict, output_path: Path) -> dict:
     return workflow_copy
 
 
-def retrieve_workflow_output(workflow: dict, output_path: Path) -> Path:
+def retrieve_workflow_outputs(workflow: dict, output_path: Path) -> Path:
     """
     Get the output file by name from the workflow
     """
