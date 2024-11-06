@@ -10,6 +10,8 @@ import torch
 from PIL import Image, ImageOps, ImageSequence
 from PIL.PngImagePlugin import PngInfo
 
+from .monkeypatch import set_bentoml_output
+
 
 # AnyType class hijacks the isinstance, issubclass, bool, str, jsonserializable, eq, ne methods to always return True
 class AnyType(str):
@@ -28,8 +30,6 @@ class OutputPath:
         return {
             "required": {
                 "filename": ("STRING", {"default": ""}),
-            },
-            "hidden": {
                 "filename_prefix": ("STRING", {"default": "BentoML"}),
             },
         }
@@ -65,11 +65,11 @@ class OutputImage:
         return {
             "required": {
                 "images": ("IMAGE", {"tooltip": "The images to save."}),
+                "filename_prefix": ("STRING", {"default": "BentoML"}),
             },
             "hidden": {
                 "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO",
-                "filename_prefix": ("STRING", {"default": "BentoML"}),
             },
         }
 
@@ -212,6 +212,10 @@ class StringInput:
     def string_input(self, value):
         return (value,)
 
+    @classmethod
+    def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
+
 
 class IntegerInput:
     @classmethod
@@ -228,6 +232,10 @@ class IntegerInput:
 
     def identity(self, value):
         return (value,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
 
 
 class FloatInput:
@@ -246,6 +254,10 @@ class FloatInput:
     def identity(self, value):
         return (value,)
 
+    @classmethod
+    def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
+
 
 class BooleanInput:
     @classmethod
@@ -263,6 +275,10 @@ class BooleanInput:
     def identity(self, value):
         return (value,)
 
+    @classmethod
+    def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
+
 
 class PathInput:
     @classmethod
@@ -279,6 +295,10 @@ class PathInput:
 
     def identity(self, path):
         return (path,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, path):
+        set_bentoml_output([(path,)])
 
 
 NODE_CLASS_MAPPINGS = {
