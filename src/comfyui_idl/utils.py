@@ -54,7 +54,7 @@ def _get_input_name(node, dep_map) -> str:
         return title
     nid = node["id"]
     if (nid, 0) in dep_map:
-        return dep_map[(nid, 0)]
+        return list(dep_map[(nid, 0)]["inputs"].keys())[0]
     return _normalize_to_identifier(title)
 
 
