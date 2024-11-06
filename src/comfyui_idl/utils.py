@@ -45,28 +45,48 @@ def _normalize_to_identifier(s: str) -> str:
     return s.lower()
 
 
+def _get_input_name(node, dep_map) -> str:
+    """
+    Get the input name from the node
+    """
+    title = node["_meta"]["title"]
+    if title.isidentifier():
+        return title
+    nid = node["id"]
+    if (nid, 0) in dep_map:
+        return dep_map[(nid, 0)]
+    return _normalize_to_identifier(title)
+
+
+def _get_output_name(node) -> str:
+    title = node["_meta"]["title"]
+    if title.isidentifier():
+        return title
+    return _normalize_to_identifier(title)
+
+
 def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     """
     Parse the workflow template and return the input and output definition
     """
     inputs = {}
     outputs = {}
+    dep_map = {}
+
+    for id, node in workflow.items():
+        for i in node["inputs"].values():
+            if isinstance(i, list) and len(i) == 2:  # is a link
+                dep_map[tuple(i)] = id
 
     for id, node in workflow.items():
         if node["class_type"].startswith("BentoInput"):
-            name = node["_meta"]["title"]
-            if not name.isidentifier():
-                # format the name to be a valid python identifier
-                name = _normalize_to_identifier(name)
+            name = _get_input_name(node, dep_map)
             if name in inputs:
                 name = f"{name}_{id}"
             node["id"] = id
             inputs[name] = node
         elif node["class_type"].startswith("BentoOutput"):
-            name = node["_meta"]["title"]
-            if not name.isidentifier():
-                # format the name to be a valid python identifier
-                name = _normalize_to_identifier(name)
+            name = _get_output_name(node)
             if name in inputs:
                 name = f"{name}_{id}"
             node["id"] = id
