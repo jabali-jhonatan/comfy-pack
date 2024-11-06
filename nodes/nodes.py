@@ -331,12 +331,12 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "BentoOutputPath": "Bento Path Output",
-    "BentoOutputImage": "Bento Image Output",
-    "BentoInputImage": "Bento Load Image",
-    "BentoInputString": "Bento String Input",
-    "BentoInputInteger": "Bento Integer Input",
-    "BentoInputFloat": "Bento Float Input",
-    "BentoInputBoolean": "Bento Boolean Input",
-    "BentoInputPath": "Bento Path Input",
+    "BentoOutputPath": "Path Output",
+    "BentoOutputImage": "Image Output",
+    "BentoInputImage": "Load Image",
+    "BentoInputString": "String Input",
+    "BentoInputInteger": "Integer Input",
+    "BentoInputFloat": "Float Input",
+    "BentoInputBoolean": "Boolean Input",
+    "BentoInputPath": "Path Input",
 }

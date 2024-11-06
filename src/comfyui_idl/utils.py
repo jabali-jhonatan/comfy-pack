@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,21 @@ def _set_node_value(node: dict, value: any) -> None:
     node["inputs"][key] = value
 
 
+def _normalize_to_identifier(s: str) -> str:
+    if not s:
+        return "_"
+
+    s = re.sub(r"[^a-zA-Z0-9_]", "_", s)
+
+    if s[0].isdigit():
+        s = "_" + s
+
+    s = re.sub(r"_+", "_", s)
+    s = s.strip("_")
+    s = s if s else "_"
+    return s.lower()
+
+
 def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     """
     Parse the workflow template and return the input and output definition
@@ -39,10 +55,20 @@ def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     for id, node in workflow.items():
         if node["class_type"].startswith("BentoInput"):
             name = node["_meta"]["title"]
+            if not name.isidentifier():
+                # format the name to be a valid python identifier
+                name = _normalize_to_identifier(name)
+            if name in inputs:
+                name = f"{name}_{id}"
             node["id"] = id
             inputs[name] = node
         elif node["class_type"].startswith("BentoOutput"):
             name = node["_meta"]["title"]
+            if not name.isidentifier():
+                # format the name to be a valid python identifier
+                name = _normalize_to_identifier(name)
+            if name in inputs:
+                name = f"{name}_{id}"
             node["id"] = id
             outputs[name] = node
 
