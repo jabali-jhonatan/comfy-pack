@@ -79,17 +79,16 @@ def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
                 dep_map[tuple(i)] = id
 
     for id, node in workflow.items():
+        node["id"] = id
         if node["class_type"].startswith("BentoInput"):
             name = _get_input_name(node, dep_map)
             if name in inputs:
                 name = f"{name}_{id}"
-            node["id"] = id
             inputs[name] = node
         elif node["class_type"].startswith("BentoOutput"):
             name = _get_output_name(node)
             if name in inputs:
                 name = f"{name}_{id}"
-            node["id"] = id
             outputs[name] = node
 
     return inputs, outputs
