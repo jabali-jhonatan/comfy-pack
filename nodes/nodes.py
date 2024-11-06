@@ -30,7 +30,7 @@ class OutputPath:
         return {
             "required": {
                 "filename": ("STRING", {"default": "", "forceInput": True}),
-                "filename_prefix": ("STRING", {"default": "BentoML"}),
+                "filename_prefix": ("STRING", {"default": "BentoML_"}),
             },
         }
 
