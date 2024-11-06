@@ -1,7 +1,7 @@
 __version__ = "0.1.0"
 
 
-from utils import (
+from comfyui_idl.utils import (
     parse_workflow,
     generate_input_model,
     populate_workflow_inputs,
