@@ -136,6 +136,7 @@ class LoadImage:
     CATEGORY = "bentoml/io"
     BENTOML_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK")
+    RETUEN_NAMES = ("image", "mask")
     FUNCTION = "load_image"
 
     def load_image(self, image):
@@ -208,6 +209,7 @@ class StringInput:
         }
 
     RETURN_TYPES = ("STRING",)
+    RETUEN_NAMES = ("string",)
     BENTOML_NODE = True
     FUNCTION = "string_input"
     CATEGORY = "bentoml/io"
@@ -231,6 +233,7 @@ class IntegerInput:
         }
 
     RETURN_TYPES = ("INT",)
+    RETUEN_NAMES = ("int",)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "bentoml/io"
@@ -254,6 +257,7 @@ class FloatInput:
         }
 
     RETURN_TYPES = ("FLOAT",)
+    RETUEN_NAMES = ("float",)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "bentoml/io"
@@ -277,6 +281,7 @@ class BooleanInput:
         }
 
     RETURN_TYPES = ("BOOLEAN",)
+    RETUEN_NAMES = ("bool",)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
     BENTOML_NODE = True
@@ -300,6 +305,7 @@ class PathInput:
         }
 
     RETURN_TYPES = (anytype,)
+    RETUEN_NAMES = ("path",)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "bentoml/io"
