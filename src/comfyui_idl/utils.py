@@ -1,15 +1,35 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import copy
 
-__version__ = "0.1.0"
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
-    from pathlib import Path
+
+CLASS_TYPES = {
+    "BentoInputString": str,
+    "BentoInputBoolean": bool,
+    "BentoInputInteger": int,
+    "BentoInputFloat": float,
+    "BentoInputPath": Path,
+    "BentoInputImage": Path,
+}
+
+BENTO_OUTPUT_NODE = "BentoOutputPath"
 
 
-def parse_workflow(workflow: dict) -> tuple[dict, dict]:
+def _get_node_value(node: dict) -> any:
+    return next(iter(node["inputs"].values()))
+
+
+def _set_node_value(node: dict, value: any) -> None:
+    key = next(iter(node["inputs"].keys()))
+    if isinstance(value, Path):
+        value = value.as_posix()
+    node["inputs"][key] = value
+
+
+def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     """
     Parse the workflow template and return the input and output definition
     """
@@ -29,55 +49,61 @@ def parse_workflow(workflow: dict) -> tuple[dict, dict]:
     return inputs, outputs
 
 
-def generate_input_model(inputs: dict) -> type[BaseModel]:
+def generate_input_model(workflow: dict) -> type[BaseModel]:
     """
     Generate a pydantic model from the input definition
     """
-    from pydantic import create_model, Field
-    from pathlib import Path
+
+    from pydantic import Field, create_model
+
+    inputs, _ = _parse_workflow(workflow)
 
     input_fields = {}
     for name, node in inputs.items():
-        if node["class_type"] == "BentoInputPath":
-            input_fields[name] = (Path, Field())
+        class_type = node["class_type"]
+        if class_type in CLASS_TYPES:
+            ann = CLASS_TYPES[class_type]
+            if class_type != "BentoInputPath":
+                field = (ann, Field(default=_get_node_value(node)))
+            else:
+                field = (ann, Field())
+            input_fields[name] = field
+        else:
+            raise ValueError(f"Unsupported class type: {class_type}")
     return create_model("ParsedWorkflowTemplate", **input_fields)
 
 
-def populate_workflow_inputs(workflow: dict, **kwargs) -> dict:
+def populate_workflow_inputs_outputs(
+    workflow: dict, output_path: Path, **kwargs
+) -> dict:
     """
-    Fill the input values into the workflow
+    Fill the input values and output path into the workflow
     """
-    input_spec, _ = parse_workflow(workflow)
-    workflow_copy = copy.deepcopy(workflow)
+    input_spec, output_spec = _parse_workflow(workflow)
     for k, v in kwargs.items():
         node = input_spec[k]
-        if node["class_type"] == "BentoInputPath":
-            workflow_copy[node["id"]]["inputs"]["path"] = v
-    return workflow_copy
+        if not node["class_type"].startswith("BentoInput"):
+            raise ValueError(f"Node {k} is not an input node")
+        _set_node_value(workflow[node["id"]], v)
 
-
-def configure_workflow_outputs(workflow: dict, output_path: Path) -> dict:
-    """
-    Configure the output path for the workflow
-    """
-    _, outputs = parse_workflow(workflow)
-    workflow_copy = copy.deepcopy(workflow)
-    for _, node in outputs.items():
+    for _, node in output_spec.items():
         node_id = node["id"]
-        if node["class_type"] == "BentoOutputPath":
-            workflow_copy[node["id"]]["inputs"]["filename_prefix"] = (
+        if node["class_type"] == BENTO_OUTPUT_NODE:
+            workflow[node_id]["inputs"]["filename_prefix"] = (
                 output_path / f"{node_id}_"
             ).as_posix()
-    return workflow_copy
+    return workflow
 
 
 def retrieve_workflow_outputs(workflow: dict, output_path: Path) -> Path:
     """
     Get the output file by name from the workflow
     """
-    _, outputs = parse_workflow(workflow)
-    if len(outputs) == 1:
-        node = list(outputs.values())[0]
-        node_id = node["id"]
-        return output_path.glob(f"{node_id}_*").__next__()
-    assert False, "Multiple output nodes are not supported"
+    _, outputs = _parse_workflow(workflow)
+    if len(outputs) != 1:
+        raise ValueError("Multiple output nodes are not supported")
+    node = list(outputs.values())[0]
+    if node["class_type"] != BENTO_OUTPUT_NODE:
+        raise ValueError(f"Output node is not of type {BENTO_OUTPUT_NODE}")
+    node_id = node["id"]
+    return next(output_path.glob(f"{node_id}_*"))
