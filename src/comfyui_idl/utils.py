@@ -54,7 +54,9 @@ def _get_input_name(node, dep_map) -> str:
         return title
     nid = node["id"]
     if (nid, 0) in dep_map:
-        return list(dep_map[(nid, 0)]["inputs"].keys())[0]
+        _, input_name = dep_map[(nid, 0)]
+        return _normalize_to_identifier(input_name)
+
     return _normalize_to_identifier(title)
 
 
@@ -74,9 +76,9 @@ def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     dep_map = {}
 
     for id, node in workflow.items():
-        for i in node["inputs"].values():
-            if isinstance(i, list) and len(i) == 2:  # is a link
-                dep_map[tuple(i)] = node
+        for input_name, v in node["inputs"].items():
+            if isinstance(v, list) and len(v) == 2:  # is a link
+                dep_map[tuple(v)] = node, input_name
 
     for id, node in workflow.items():
         node["id"] = id
