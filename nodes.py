@@ -10,7 +10,14 @@ import torch
 from PIL import Image, ImageOps, ImageSequence
 from PIL.PngImagePlugin import PngInfo
 
-from .autonode import anytype
+
+# AnyType class hijacks the isinstance, issubclass, bool, str, jsonserializable, eq, ne methods to always return True
+class AnyType(str):
+    def __ne__(self, __value: object) -> bool:
+        return False
+
+
+anytype = AnyType("*")  # when a != b is called, it will always return False
 
 
 class OutputPath:
@@ -198,12 +205,12 @@ class StringInput:
             }
         }
 
-    RETURN_TYPES = (anytype,)
+    RETURN_TYPES = ("STRING",)
     FUNCTION = "string_input"
     CATEGORY = "bentoml/io"
 
     def string_input(self, value):
-        return value
+        return (value,)
 
 
 class IntegerInput:
@@ -215,12 +222,12 @@ class IntegerInput:
             }
         }
 
-    RETURN_TYPES = (anytype,)
+    RETURN_TYPES = ("INT",)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
 
     def identity(self, value):
-        return value
+        return (value,)
 
 
 class FloatInput:
@@ -232,12 +239,12 @@ class FloatInput:
             }
         }
 
-    RETURN_TYPES = (anytype,)
+    RETURN_TYPES = ("FLOAT",)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
 
     def identity(self, value):
-        return value
+        return (value,)
 
 
 class BooleanInput:
@@ -254,7 +261,7 @@ class BooleanInput:
     CATEGORY = "bentoml/io"
 
     def identity(self, value):
-        return value
+        return (value,)
 
 
 class PathInput:
@@ -266,12 +273,12 @@ class PathInput:
             }
         }
 
-    RETURN_TYPES = (anytype,)
+    RETURN_TYPES = ("BOOLEAN",)
     FUNCTION = "identity"
     CATEGORY = "bentoml/io"
 
     def identity(self, path):
-        return path
+        return (path,)
 
 
 NODE_CLASS_MAPPINGS = {
