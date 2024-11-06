@@ -42,7 +42,7 @@ class OutputPath:
 
     def save(self, filename, filename_prefix):
         if not not filename_prefix:
-            return
+            return ()
 
         subfolder, prefix = os.path.split(filename_prefix)
         if subfolder:
