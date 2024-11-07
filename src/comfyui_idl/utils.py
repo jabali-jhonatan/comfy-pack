@@ -16,7 +16,10 @@ CLASS_TYPES = {
     "BentoInputImage": Path,
 }
 
-BENTO_OUTPUT_NODE = "BentoOutputPath"
+BENTO_OUTPUT_NODES = {
+    "BentoOutputPath",
+    "BentoOutputImage",
+}
 
 
 def _get_node_value(node: dict) -> Any:
@@ -152,7 +155,7 @@ def populate_workflow(workflow: dict, output_path: Path, **inputs) -> dict:
 
     for _, node in output_spec.items():
         node_id = node["id"]
-        if node["class_type"] == BENTO_OUTPUT_NODE:
+        if node["class_type"] in BENTO_OUTPUT_NODES:
             workflow[node_id]["inputs"]["filename_prefix"] = (
                 output_path / f"{node_id}_"
             ).as_posix()
@@ -192,8 +195,8 @@ def retrieve_workflow_outputs(
         return value_map
 
     node = list(outputs.values())[0]
-    if node["class_type"] != BENTO_OUTPUT_NODE:
-        raise ValueError(f"Output node is not of type {BENTO_OUTPUT_NODE}")
+    if node["class_type"] not in BENTO_OUTPUT_NODES:
+        raise ValueError(f"Output node is not of type {BENTO_OUTPUT_NODES}")
     node_id = node["id"]
 
     outs = list(output_path.glob(f"{node_id}_*"))
