@@ -30,15 +30,15 @@ class OutputPath:
         return {
             "required": {
                 "filename": ("STRING", {"default": "", "forceInput": True}),
-                "filename_prefix": ("STRING", {"default": "BentoML_"}),
+                "filename_prefix": ("STRING", {"default": "ComfyUI_IDL_"}),
             },
         }
 
     RETURN_TYPES = ()
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/output"
     BENTOML_NODE = True
     FUNCTION = "save"
-    DESCRIPTION = "Save the input data for bentoml output"
+    DESCRIPTION = "Save the input data for IDL output"
 
     def save(self, filename, filename_prefix):
         if not filename_prefix:
@@ -67,7 +67,7 @@ class OutputImage:
         return {
             "required": {
                 "images": ("IMAGE", {"tooltip": "The images to save."}),
-                "filename_prefix": ("STRING", {"default": "BentoML"}),
+                "filename_prefix": ("STRING", {"default": "ComfyUI_IDL_"}),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -80,11 +80,11 @@ class OutputImage:
     BENTOML_NODE = True
     OUTPUT_NODE = True
 
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/output"
     DESCRIPTION = "Saves the input images to your ComfyUI output directory."
 
     def save_images(
-        self, images, filename_prefix="BentoML", prompt=None, extra_pnginfo=None
+        self, images, filename_prefix="ComfyUI_IDL_", prompt=None, extra_pnginfo=None
     ):
         filename_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
@@ -120,7 +120,7 @@ class OutputImage:
         return {"ui": {"images": results}}
 
 
-class LoadImage:
+class ImageInput:
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
@@ -133,7 +133,7 @@ class LoadImage:
             "required": {"image": (sorted(files), {"image_upload": True})},
         }
 
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/input"
     BENTOML_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK")
     RETUEN_NAMES = ("image", "mask")
@@ -212,7 +212,7 @@ class StringInput:
     RETURN_TYPES = (anytype,)
     BENTOML_NODE = True
     FUNCTION = "string_input"
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/input"
 
     def string_input(self, value):
         return (value,)
@@ -236,7 +236,7 @@ class IntegerInput:
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     BENTOML_NODE = True
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/input"
 
     def identity(self, value):
         return (value,)
@@ -260,7 +260,7 @@ class FloatInput:
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
     BENTOML_NODE = True
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/input"
 
     def identity(self, value):
         return (value,)
@@ -283,7 +283,7 @@ class BooleanInput:
     RETUEN_NAMES = ("bool",)
     RETURN_TYPES = (anytype,)
     FUNCTION = "identity"
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/input"
     BENTOML_NODE = True
 
     def identity(self, value):
@@ -308,7 +308,7 @@ class PathInput:
     RETUEN_NAMES = ("path",)
     FUNCTION = "identity"
     BENTOML_NODE = True
-    CATEGORY = "bentoml/io"
+    CATEGORY = "ComfyUI-IDL/input"
 
     def identity(self, path):
         return (path,)
@@ -322,7 +322,7 @@ class PathInput:
 NODE_CLASS_MAPPINGS = {
     "BentoOutputPath": OutputPath,
     "BentoOutputImage": OutputImage,
-    "BentoInputImage": LoadImage,
+    "BentoInputImage": ImageInput,
     "BentoInputString": StringInput,
     "BentoInputInteger": IntegerInput,
     "BentoInputFloat": FloatInput,
@@ -331,12 +331,12 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "BentoOutputPath": "Path Output",
-    "BentoOutputImage": "Image Output",
-    "BentoInputImage": "Load Image",
-    "BentoInputString": "String Input",
+    "BentoInputImage": "Image Input",
+    "BentoInputPath": "Path Input",
     "BentoInputInteger": "Integer Input",
     "BentoInputFloat": "Float Input",
     "BentoInputBoolean": "Boolean Input",
-    "BentoInputPath": "Path Input",
+    "BentoInputString": "String Input",
+    "BentoOutputImage": "Image Output",
+    "BentoOutputPath": "Path Output",
 }
