@@ -45,7 +45,7 @@ def _normalize_to_identifier(s: str) -> str:
     return s.lower()
 
 
-def _get_input_name(node, dep_map) -> str:
+def _get_node_identifier(node, dep_map=None) -> str:
     """
     Get the input name from the node
     """
@@ -53,17 +53,10 @@ def _get_input_name(node, dep_map) -> str:
     if title.isidentifier():
         return title
     nid = node["id"]
-    if (nid, 0) in dep_map:
+    if dep_map and (nid, 0) in dep_map:
         _, input_name = dep_map[(nid, 0)]
         return _normalize_to_identifier(input_name)
 
-    return _normalize_to_identifier(title)
-
-
-def _get_output_name(node) -> str:
-    title = node["_meta"]["title"]
-    if title.isidentifier():
-        return title
     return _normalize_to_identifier(title)
 
 
@@ -83,12 +76,12 @@ def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
     for id, node in workflow.items():
         node["id"] = id
         if node["class_type"].startswith("BentoInput"):
-            name = _get_input_name(node, dep_map)
+            name = _get_node_identifier(node, dep_map)
             if name in inputs:
                 name = f"{name}_{id}"
             inputs[name] = node
         elif node["class_type"].startswith("BentoOutput"):
-            name = _get_output_name(node)
+            name = _get_node_identifier(node)
             if name in inputs:
                 name = f"{name}_{id}"
             outputs[name] = node
