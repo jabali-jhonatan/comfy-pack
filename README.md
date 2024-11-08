@@ -1,2 +1,3 @@
-# ComfyUI-BentoML
-ComfyUI custom nodes for BentoML services
+# ComfyUI-IDL
+
+ComfyUI custom nodes for input and output specification.
