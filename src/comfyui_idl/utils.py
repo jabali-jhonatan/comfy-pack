@@ -63,7 +63,7 @@ def _get_node_identifier(node, dep_map=None) -> str:
     return _normalize_to_identifier(title)
 
 
-def _parse_workflow(workflow: dict) -> tuple[dict, dict]:
+def _parse_workflow(workflow: dict) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Parse the workflow template and return the input and output definition
     """
@@ -194,9 +194,9 @@ def retrieve_workflow_outputs(
                 value_map[k] = path_strs
         return value_map
 
-    node = list(outputs.values())[0]
+    name, node = next(iter(outputs.items()))
     if node["class_type"] not in BENTO_OUTPUT_NODES:
-        raise ValueError(f"Output node is not of type {BENTO_OUTPUT_NODES}")
+        raise ValueError(f"Output node {name} is not of type {BENTO_OUTPUT_NODES}")
     node_id = node["id"]
 
     outs = list(output_path.glob(f"{node_id}_*"))
