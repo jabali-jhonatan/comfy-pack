@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import copy
+import json
+import logging
+import os
 import shutil
 import subprocess
 import tempfile
-import logging
-import os
-import json
 from pathlib import Path
 from typing import Any, Union
+
 from comfyui_idl.utils import (
     populate_workflow,
     retrieve_workflow_outputs,
@@ -178,6 +179,9 @@ class WorkflowRunner:
         with open(workflow_file_path, "w") as file:
             json.dump(workflow_copy, file)
 
+        extra_args = []
+        if "BENTOML_DEBUG" in os.environ:
+            extra_args.append("--verbose")
         # Execute the workflow
         command = [
             "comfy",
@@ -187,6 +191,7 @@ class WorkflowRunner:
             "--timeout",
             str(timeout),
             "--wait",
+            *extra_args,
         ]
         subprocess.run(command, check=True)
 
