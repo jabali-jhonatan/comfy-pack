@@ -1,7 +1,6 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 
 import folder_paths
@@ -56,6 +55,42 @@ class OutputPath:
         return ()
 
 
+def get_save_image_path(
+    filename_prefix: str, output_dir: str, image_width=0, image_height=0
+) -> tuple[str, str, int, str, str]:
+    def map_filename(filename: str) -> tuple[int, str]:
+        prefix_len = len(os.path.basename(filename_prefix))
+        prefix = filename[: prefix_len + 1]
+        try:
+            digits = int(filename[prefix_len + 1 :].split("_")[0])
+        except:
+            digits = 0
+        return digits, prefix
+
+    subfolder = os.path.dirname(os.path.normpath(filename_prefix))
+    filename = os.path.basename(os.path.normpath(filename_prefix))
+
+    full_output_folder = os.path.join(output_dir, subfolder)
+
+    try:
+        counter = (
+            max(
+                filter(
+                    lambda a: os.path.normcase(a[1][:-1]) == os.path.normcase(filename)
+                    and a[1][-1] == "_",
+                    map(map_filename, os.listdir(full_output_folder)),
+                )
+            )[0]
+            + 1
+        )
+    except ValueError:
+        counter = 1
+    except FileNotFoundError:
+        os.makedirs(full_output_folder, exist_ok=True)
+        counter = 1
+    return full_output_folder, filename, counter, subfolder, filename_prefix
+
+
 class OutputImage:
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -87,13 +122,10 @@ class OutputImage:
     def save_images(
         self, images, filename_prefix="ComfyUI_IDL_", prompt=None, extra_pnginfo=None
     ):
-        prefix_path = Path(filename_prefix)
-        stem_prefix = prefix_path.stem
-
-        stem_prefix += self.prefix_append
+        filename_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
-            folder_paths.get_save_image_path(
-                stem_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
+            get_save_image_path(
+                filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
             )
         )
         results = list()
@@ -119,11 +151,6 @@ class OutputImage:
             results.append(
                 {"filename": file, "subfolder": subfolder, "type": self.type}
             )
-            if Path(subfolder) != prefix_path.parent:
-                shutil.copy2(
-                    os.path.join(full_output_folder, file),
-                    prefix_path.parent / file,
-                )
             counter += 1
 
         return {"ui": {"images": results}}
