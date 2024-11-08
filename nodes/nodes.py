@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+from pathlib import Path
 import shutil
 
 import folder_paths
@@ -86,10 +87,13 @@ class OutputImage:
     def save_images(
         self, images, filename_prefix="ComfyUI_IDL_", prompt=None, extra_pnginfo=None
     ):
-        filename_prefix += self.prefix_append
+        prefix_path = Path(filename_prefix)
+        stem_prefix = prefix_path.stem
+
+        stem_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
             folder_paths.get_save_image_path(
-                filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
+                stem_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
             )
         )
         results = list()
@@ -115,6 +119,11 @@ class OutputImage:
             results.append(
                 {"filename": file, "subfolder": subfolder, "type": self.type}
             )
+            if Path(subfolder) != prefix_path.parent:
+                shutil.copy2(
+                    os.path.join(full_output_folder, file),
+                    prefix_path.parent / file,
+                )
             counter += 1
 
         return {"ui": {"images": results}}
