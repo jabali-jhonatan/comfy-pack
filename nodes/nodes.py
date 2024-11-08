@@ -23,6 +23,7 @@ anytype = AnyType("*")  # when a != b is called, it will always return False
 
 
 class OutputPath:
+    COLOR = (142, 36, 170)
     OUTPUT_NODE = True
 
     @classmethod
@@ -56,7 +57,10 @@ class OutputPath:
 
 
 def get_save_image_path(
-    filename_prefix: str, output_dir: str, image_width=0, image_height=0
+    filename_prefix: str,
+    output_dir: str,
+    image_width=0,
+    image_height=0,
 ) -> tuple[str, str, int, str, str]:
     def map_filename(filename: str) -> tuple[int, str]:
         prefix_len = len(os.path.basename(filename_prefix))
@@ -92,6 +96,8 @@ def get_save_image_path(
 
 
 class OutputImage:
+    COLOR = (142, 36, 170)
+
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
         self.type = "output"
@@ -157,6 +163,8 @@ class OutputImage:
 
 
 class ImageInput:
+    COLOR = (142, 36, 170)
+
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
@@ -236,6 +244,8 @@ class ImageInput:
 
 
 class StringInput:
+    COLOR = (142, 36, 170)
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -260,6 +270,8 @@ class StringInput:
 
 
 class IntegerInput:
+    COLOR = (142, 36, 170)
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -284,6 +296,8 @@ class IntegerInput:
 
 
 class FloatInput:
+    COLOR = (142, 36, 170)
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -308,6 +322,8 @@ class FloatInput:
 
 
 class BooleanInput:
+    COLOR = (142, 36, 170)
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -332,6 +348,8 @@ class BooleanInput:
 
 
 class PathInput:
+    COLOR = (142, 36, 170)
+
     @classmethod
     def INPUT_TYPES(s):
         return {
