@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import os
+import requests
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,13 @@ from comfyui_idl.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _probe_comfyui_server():
+    url = 'http://127.0.0.1:8188/api/customnode/getmappings'
+    params = {'mode': 'nickname'}
+
+    _ = requests.get(url, params=params)
 
 
 class WorkflowRunner:
@@ -109,6 +117,7 @@ class WorkflowRunner:
         ]
         if subprocess.run(command, check=True):
             self.is_running = True
+            _probe_comfyui_server()
             logger.info("Successfully started ComfyUI in the background")
         else:
             logger.error("Failed to start ComfyUI in the background")
