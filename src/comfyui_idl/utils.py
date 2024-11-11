@@ -21,6 +21,11 @@ BENTO_OUTPUT_NODES = {
     "BentoOutputImage",
 }
 
+BENTO_PATH_INPUT_NODES = {
+    "BentoInputPath",
+    "BentoInputImage",
+}
+
 
 def _get_node_value(node: dict) -> Any:
     return next(iter(node["inputs"].values()))
@@ -121,10 +126,10 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
         class_type = node["class_type"]
         if class_type in CLASS_TYPES:
             ann = CLASS_TYPES[class_type]
-            if class_type != "BentoInputPath":
-                field = (ann, Field(default=_get_node_value(node)))
-            else:
+            if class_type in BENTO_PATH_INPUT_NODES:
                 field = (ann, Field())
+            else:
+                field = (ann, Field(default=_get_node_value(node)))
             input_fields[name] = field
         else:
             raise ValueError(f"Unsupported class type: {class_type}")

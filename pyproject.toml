@@ -5,8 +5,8 @@ authors = [{ name = "Frost Ming", email = "frost@bentoml.com" }]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "comfy-cli>=0.0.14",
     "pydantic>=2.9",
-    "comfy-cli>=1.2.8",
 ]
 dynamic = ["version"]
 
