@@ -3,9 +3,9 @@ name = "comfyui-idl"
 description = "ComfyUI Interface Definition Language"
 authors = [{ name = "Frost Ming", email = "frost@bentoml.com" }]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
-    "comfy-cli>=0.0.14",
+    "comfy-cli>=1.2.8",
     "pydantic>=2.9",
 ]
 dynamic = ["version"]
@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bentoml/ComfyUI-BentoML"
+Homepage = "https://github.com/bentoml/ComfyUI-IDL"
 
 [build-system]
 requires = ["pdm-backend"]
