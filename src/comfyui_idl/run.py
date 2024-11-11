@@ -4,7 +4,6 @@ import copy
 import json
 import logging
 import os
-import requests
 import shutil
 import subprocess
 import tempfile
@@ -20,10 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 def _probe_comfyui_server():
+    from urllib import parse, request
     url = 'http://127.0.0.1:8188/api/customnode/getmappings'
     params = {'mode': 'nickname'}
-
-    _ = requests.get(url, params=params)
+    full_url = f"{url}?{parse.urlencode(params)}"
+    req = request.Request(full_url)
+    _ = request.urlopen(req)
 
 
 class WorkflowRunner:
