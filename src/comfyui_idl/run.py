@@ -18,6 +18,15 @@ from comfyui_idl.utils import (
 logger = logging.getLogger(__name__)
 
 
+def _probe_comfyui_server():
+    from urllib import parse, request
+    url = 'http://127.0.0.1:8188/api/customnode/getmappings'
+    params = {'mode': 'nickname'}
+    full_url = f"{url}?{parse.urlencode(params)}"
+    req = request.Request(full_url)
+    _ = request.urlopen(req)
+
+
 class WorkflowRunner:
     """
     A class to manage and run ComfyUI workflows.
@@ -109,6 +118,7 @@ class WorkflowRunner:
         ]
         if subprocess.run(command, check=True):
             self.is_running = True
+            _probe_comfyui_server()
             logger.info("Successfully started ComfyUI in the background")
         else:
             logger.error("Failed to start ComfyUI in the background")

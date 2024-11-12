@@ -68,6 +68,13 @@ def _get_node_identifier(node, dep_map=None) -> str:
     return _normalize_to_identifier(title)
 
 
+API_WORKFLOW_MESSAGE = """
+It seems you are trying to parse an ordinary Workflow json file.
+Please save the Workflow with the Save (API Format).
+If you don't have this button, you must enable the "Dev mode Options" by clicking the Settings button on the top right (gear icon). Check the setting option "Enable Dev Mode options". After that, the Button Save (API Format) should appear.
+"""
+
+
 def _parse_workflow(workflow: dict) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Parse the workflow template and return the input and output definition
@@ -75,6 +82,9 @@ def _parse_workflow(workflow: dict) -> tuple[dict[str, Any], dict[str, Any]]:
     inputs = {}
     outputs = {}
     dep_map = {}
+
+    if "last_node_id" in workflow:
+        raise ValueError(API_WORKFLOW_MESSAGE)
 
     for id, node in workflow.items():
         for input_name, v in node["inputs"].items():

@@ -5,7 +5,7 @@ function mimicNode(node, target, slot) {
     if (typeof widget.origType === "undefined") return widget;
     const newWidget = Object.assign({}, widget);
     for (const key in widget) {
-      if (key.startsWith("orig") || key === "serializeValue" || key === "computeSize") {
+      if (key.startsWith("orig") || key === "computeSize") {
         delete newWidget[key];
       }
     }
