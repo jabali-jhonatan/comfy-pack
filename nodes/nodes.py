@@ -373,6 +373,31 @@ class PathInput:
         return True
 
 
+class DynamicInput:
+    COLOR = (142, 36, 170)
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "input": ("*", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    FUNCTION = "identity"
+    BENTOML_NODE = True
+    CATEGORY = "ComfyUI-IDL/input"
+
+    def identity(self, input):
+        return (input,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, input):
+        set_bentoml_output([(input,)])
+        return True
+
+
 NODE_CLASS_MAPPINGS = {
     "BentoOutputPath": OutputPath,
     "BentoOutputImage": OutputImage,
@@ -382,6 +407,7 @@ NODE_CLASS_MAPPINGS = {
     "BentoInputFloat": FloatInput,
     "BentoInputBoolean": BooleanInput,
     "BentoInputPath": PathInput,
+    "BentoInputDynamic": DynamicInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -393,4 +419,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "BentoInputString": "String Input",
     "BentoOutputImage": "Image Output",
     "BentoOutputPath": "Path Output",
+    "BentoInputDynamic": "Dynamic Input",
 }
