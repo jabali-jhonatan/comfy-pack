@@ -76,7 +76,7 @@ async def _write_custom_nodes(zf: zipfile.ZipFile) -> None:
     custom_nodes = os.path.join(folder_paths.base_path, "custom_nodes")
     coros = []
 
-    async def get_repo_and_commit_hash(subdir: Path) -> tuple[str, str]:
+    async def get_node_info(subdir: Path) -> dict:
         proc = await asyncio.subprocess.create_subprocess_exec(
             "git",
             "config",
@@ -87,8 +87,6 @@ async def _write_custom_nodes(zf: zipfile.ZipFile) -> None:
         )
         stdout, _ = await proc.communicate()
         url = stdout.decode().strip()
-        repo_match = GIT_URL_REGEX.search(url)
-        repo = repo_match.group() if repo_match else "unknown"
 
         proc = await asyncio.subprocess.create_subprocess_exec(
             "git",
@@ -99,17 +97,19 @@ async def _write_custom_nodes(zf: zipfile.ZipFile) -> None:
         )
         stdout, _ = await proc.communicate()
         commit_hash = stdout.decode().strip()
-        return repo, commit_hash
+        return {
+            "url": url,
+            "commit_hash": commit_hash,
+            "disabled": subdir.name.endswith(".disabled"),
+        }
 
     for subdir in Path(custom_nodes).iterdir():
         if not subdir.is_dir() or not subdir.joinpath(".git").exists():
             continue
-        coros.append(get_repo_and_commit_hash(subdir))
+        coros.append(get_node_info(subdir))
 
     with zf.open("custom_nodes.json", "w") as f:
-        data = []
-        for repo, commit_hash in await asyncio.gather(*coros):
-            data.append({"repo": repo, "commit_hash": commit_hash})
+        data = await asyncio.gather(*coros)
         f.write(json.dumps(data, indent=2).encode())
 
 
