@@ -243,110 +243,6 @@ class ImageInput:
         return True
 
 
-class StringInput:
-    COLOR = (142, 36, 170)
-
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "value": ("STRING", {"default": ""}),
-            }
-        }
-
-    RETUEN_NAMES = ("string",)
-    RETURN_TYPES = (anytype,)
-    BENTOML_NODE = True
-    FUNCTION = "string_input"
-    CATEGORY = "ComfyUI-IDL/input"
-
-    def string_input(self, value):
-        return (value,)
-
-    @classmethod
-    def VALIDATE_INPUTS(s, value):
-        set_bentoml_output([(value,)])
-        return True
-
-
-class IntegerInput:
-    COLOR = (142, 36, 170)
-
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "value": ("INT", {"default": 0}),
-            }
-        }
-
-    RETUEN_NAMES = ("int",)
-    RETURN_TYPES = (anytype,)
-    FUNCTION = "identity"
-    BENTOML_NODE = True
-    CATEGORY = "ComfyUI-IDL/input"
-
-    def identity(self, value):
-        return (value,)
-
-    @classmethod
-    def VALIDATE_INPUTS(s, value):
-        set_bentoml_output([(value,)])
-        return True
-
-
-class FloatInput:
-    COLOR = (142, 36, 170)
-
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "value": ("FLOAT", {"default": 0.0}),
-            }
-        }
-
-    RETUEN_NAMES = ("float",)
-    RETURN_TYPES = (anytype,)
-    FUNCTION = "identity"
-    BENTOML_NODE = True
-    CATEGORY = "ComfyUI-IDL/input"
-
-    def identity(self, value):
-        return (value,)
-
-    @classmethod
-    def VALIDATE_INPUTS(s, value):
-        set_bentoml_output([(value,)])
-        return True
-
-
-class BooleanInput:
-    COLOR = (142, 36, 170)
-
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "value": ("BOOLEAN", {"default": False}),
-            }
-        }
-
-    RETUEN_NAMES = ("bool",)
-    RETURN_TYPES = (anytype,)
-    FUNCTION = "identity"
-    CATEGORY = "ComfyUI-IDL/input"
-    BENTOML_NODE = True
-
-    def identity(self, value):
-        return (value,)
-
-    @classmethod
-    def VALIDATE_INPUTS(s, value):
-        set_bentoml_output([(value,)])
-        return True
-
-
 class PathInput:
     COLOR = (142, 36, 170)
 
@@ -373,7 +269,7 @@ class PathInput:
         return True
 
 
-class DynamicInput:
+class ValueInput:
     COLOR = (142, 36, 170)
 
     @classmethod
@@ -385,6 +281,7 @@ class DynamicInput:
         }
 
     RETURN_TYPES = (anytype,)
+    RENAME = ("value",)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "ComfyUI-IDL/input"
@@ -402,22 +299,14 @@ NODE_CLASS_MAPPINGS = {
     "BentoOutputPath": OutputPath,
     "BentoOutputImage": OutputImage,
     "BentoInputImage": ImageInput,
-    "BentoInputString": StringInput,
-    "BentoInputInteger": IntegerInput,
-    "BentoInputFloat": FloatInput,
-    "BentoInputBoolean": BooleanInput,
     "BentoInputPath": PathInput,
-    "BentoInputDynamic": DynamicInput,
+    "BentoInputValue": ValueInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "BentoInputImage": "Image Input",
     "BentoInputPath": "Path Input",
-    "BentoInputInteger": "Integer Input",
-    "BentoInputFloat": "Float Input",
-    "BentoInputBoolean": "Boolean Input",
-    "BentoInputString": "String Input",
     "BentoOutputImage": "Image Output",
     "BentoOutputPath": "Path Output",
-    "BentoInputDynamic": "Dynamic Input",
+    "BentoInputValue": "Plain Value Input",
 }

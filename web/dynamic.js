@@ -10,12 +10,13 @@ function mimicNode(node, target, slot) {
       }
     }
     newWidget.type = widget.origType;
-    newWidget.name = "input";
+    newWidget.name = inputName;
     return newWidget;
   }
   const input = target.inputs[slot];
+  const inputName = node.inputs.length > 0 ? node.inputs[0].name : node.widgets[0].name;
   if (typeof input.widget === "undefined") {  // This is an input
-    node.inputs = [input];
+    node.inputs = [{ ...input, name: inputName }];
     node.widgets = [];
   } else {  // This is a widget
     node.widgets = [getWidget(target.widgets.find(w => w.name === input.name))];
@@ -31,8 +32,10 @@ function mimicNode(node, target, slot) {
 
 app.registerExtension({
 	name: "Comfy.DynamicInput",
+  extensionNodes: ["BentoInputValue", "BentoInputPath"],
+
 	async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (nodeData.name !== "BentoInputDynamic") return;
+    if (!this.extensionNodes.includes(nodeData.name)) return;
 
     nodeType.prototype.onConnectOutput = function () {
       if (this.outputs[0].links?.length > 0) return false;
@@ -44,11 +47,27 @@ app.registerExtension({
 
   async setup(app) {
     app.graph.nodes.forEach((node) => {
-      if (node.type !== "BentoInputDynamic") return;
+      if (!this.extensionNodes.includes(node.type)) return;
       if (node.outputs.length > 0 && node.outputs[0].links.length > 0) {
         const link = node.graph.links[node.outputs[0].links[0]];
         mimicNode(node, app.graph.getNodeById(link.target_id), link.target_slot);
       }
     })
+  },
+
+  async init(app) {
+    const originalToPrompt = app.graphToPrompt;
+    const self = this;
+    app.graphToPrompt = async function(graph = app.graph, clean = true) {
+      const { workflow, output } = await originalToPrompt(graph, clean);
+      Object.entries(output).forEach(([id, nodeData]) => {
+        if (!self.extensionNodes.includes(nodeData.class_type)) return;
+        const node = graph.getNodeById(parseInt(id));
+        if (node.widgets.length === 0) return;
+        const widget = node.widgets[0];
+        nodeData["_meta"] = Object.assign({}, nodeData["_meta"] || {}, { options: widget.options });
+      });
+      return { workflow, output };
+    };
   }
 });

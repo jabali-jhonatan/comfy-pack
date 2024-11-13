@@ -2,19 +2,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
-
-CLASS_TYPES = {
-    "BentoInputString": str,
-    "BentoInputBoolean": bool,
-    "BentoInputInteger": int,
-    "BentoInputFloat": float,
-    "BentoInputPath": Path,
-    "BentoInputImage": Path,
-}
 
 BENTO_OUTPUT_NODES = {
     "BentoOutputPath",
@@ -128,21 +119,36 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
         ValueError: If an unsupported class type is encountered in the workflow.
     """
     from pydantic import Field, create_model
+    from pydantic_core import PydanticUndefined
 
     inputs, _ = _parse_workflow(workflow)
 
     input_fields = {}
     for name, node in inputs.items():
         class_type = node["class_type"]
-        if class_type in CLASS_TYPES:
-            ann = CLASS_TYPES[class_type]
-            if class_type in BENTO_PATH_INPUT_NODES:
-                field = (ann, Field())
+        if class_type in BENTO_PATH_INPUT_NODES:
+            field = (Path, Field())
+        elif class_type == "BentoInputValue":
+            options = node.get("_meta", {}).get("options")
+            value = _get_node_value(node)
+            if not options:
+                field = (type(value), Field(default=value))
             else:
-                field = (ann, Field(default=_get_node_value(node)))
-            input_fields[name] = field
+                if values := options.get("values"):  # combo type
+                    field = (Literal[tuple(values)], Field(default=value))
+                else:  # must be number types
+                    type_ = float if options.get("round", 1) < 1 else int
+                    field = (
+                        type_,
+                        Field(
+                            default=value,
+                            ge=options.get("min", PydanticUndefined),
+                            le=options.get("max", PydanticUndefined),
+                        ),
+                    )
         else:
             raise ValueError(f"Unsupported class type: {class_type}")
+        input_fields[name] = field
     return create_model("ParsedWorkflowTemplate", **input_fields)
 
 
