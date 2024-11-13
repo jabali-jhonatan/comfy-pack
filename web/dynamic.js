@@ -32,7 +32,7 @@ function mimicNode(node, target, slot) {
 
 app.registerExtension({
 	name: "Comfy.DynamicInput",
-  extensionNodes: ["BentoInputValue", "BentoInputPath"],
+  extensionNodes: ["BentoInputValue", "BentoInputFile"],
 
 	async beforeRegisterNodeDef(nodeType, nodeData) {
     if (!this.extensionNodes.includes(nodeData.name)) return;
@@ -40,6 +40,8 @@ app.registerExtension({
     nodeType.prototype.onConnectOutput = function () {
       if (this.outputs[0].links?.length > 0) return false;
       const target = arguments[3];
+      if (this.type === "BentoInputFile" && !["COMBO", "STRING"].includes(target.inputs[arguments[4]].type))
+        return false;
       mimicNode(this, target, arguments[4]);
       this.title = target.inputs[arguments[4]].name;
     }

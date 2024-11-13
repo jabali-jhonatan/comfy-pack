@@ -136,7 +136,9 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
             else:
                 if values := options.get("values"):  # combo type
                     field = (Literal[tuple(values)], Field(default=value))
-                else:  # must be number types
+                elif any(
+                    f in options for f in ("min", "max", "round", "precision", "step")
+                ):  # must be number types
                     type_ = float if options.get("round", 1) < 1 else int
                     field = (
                         type_,
@@ -146,6 +148,8 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
                             le=options.get("max", PydanticUndefined),
                         ),
                     )
+                else:
+                    field = (type(value), Field(default=value))
         else:
             raise ValueError(f"Unsupported class type: {class_type}")
         input_fields[name] = field

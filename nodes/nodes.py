@@ -22,7 +22,7 @@ class AnyType(str):
 anytype = AnyType("*")  # when a != b is called, it will always return False
 
 
-class OutputPath:
+class OutputFile:
     COLOR = (142, 36, 170)
     OUTPUT_NODE = True
 
@@ -180,7 +180,6 @@ class ImageInput:
     CATEGORY = "ComfyUI-IDL/input"
     BENTOML_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK")
-    RETUEN_NAMES = ("image", "mask")
     FUNCTION = "load_image"
 
     def load_image(self, image):
@@ -243,7 +242,7 @@ class ImageInput:
         return True
 
 
-class PathInput:
+class FileInput:
     COLOR = (142, 36, 170)
 
     @classmethod
@@ -255,7 +254,7 @@ class PathInput:
         }
 
     RETURN_TYPES = (anytype,)
-    RETUEN_NAMES = ("path",)
+    RETURN_NAMES = ("path",)
     FUNCTION = "identity"
     BENTOML_NODE = True
     CATEGORY = "ComfyUI-IDL/input"
@@ -296,17 +295,17 @@ class ValueInput:
 
 
 NODE_CLASS_MAPPINGS = {
-    "BentoOutputPath": OutputPath,
+    "BentoOutputFile": OutputFile,
     "BentoOutputImage": OutputImage,
     "BentoInputImage": ImageInput,
-    "BentoInputPath": PathInput,
+    "BentoInputFile": FileInput,
     "BentoInputValue": ValueInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "BentoInputImage": "Image Input",
-    "BentoInputPath": "Path Input",
+    "BentoInputFile": "File Input",
     "BentoOutputImage": "Image Output",
-    "BentoOutputPath": "Path Output",
+    "BentoOutputFile": "File Output",
     "BentoInputValue": "Plain Value Input",
 }
