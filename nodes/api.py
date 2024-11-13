@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import uuid
 import zipfile
 from pathlib import Path
@@ -129,6 +130,11 @@ async def _write_inputs(zf: zipfile.ZipFile) -> None:
 async def pack_workspace(request):
     data = await request.json()
     TEMP_FOLDER.mkdir(exist_ok=True)
+    older_than_1h = time.time() - 60 * 60
+    for file in TEMP_FOLDER.iterdir():
+        if file.is_file() and file.stat().st_ctime < older_than_1h:
+            file.unlink()
+
     zip_filename = f"{uuid.uuid4()}.zip"
 
     with zipfile.ZipFile(TEMP_FOLDER / zip_filename, "w") as zf:
