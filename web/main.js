@@ -14,14 +14,19 @@ app.registerExtension({
     const packButton = document.createElement("button");
 		packButton.textContent = "Package";
     packButton.onclick = async () => {
-      const { workflow, output: workflow_api } = await app.graphToPrompt();
-      const body = JSON.stringify({ workflow, workflow_api });
-      const resp = await api.fetchApi("/bentoml/pack", { method: "POST", body, headers: { "Content-Type": "application/json" } });
-      const downloadUrl = (await resp.json())["download_url"];
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = "workspace.zip";
-      link.click();
+      packButton.disabled = true;
+      try {
+        const { workflow, output: workflow_api } = await app.graphToPrompt();
+        const body = JSON.stringify({ workflow, workflow_api });
+        const resp = await api.fetchApi("/bentoml/pack", { method: "POST", body, headers: { "Content-Type": "application/json" } });
+        const downloadUrl = (await resp.json())["download_url"];
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = "workspace.zip";
+        link.click();
+      } finally {
+        packButton.disabled = false;
+      }
     }
     menu.append(packButton);
   }
