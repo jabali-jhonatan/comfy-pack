@@ -216,7 +216,7 @@ app.registerExtension({
         downloadModal.updateProgress(100);
         const link = document.createElement("a");
         link.href = downloadUrl;
-        link.download = filename + ".cpack";
+        link.download = filename + ".cpack.zip";
         link.click();
 
         setTimeout(() => {

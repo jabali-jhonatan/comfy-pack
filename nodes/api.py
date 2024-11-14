@@ -120,12 +120,21 @@ async def _write_workflow(zf: zipfile.ZipFile, data: dict) -> None:
         f.write(json.dumps(data["workflow"], indent=2).encode())
 
 
-async def _write_inputs(zf: zipfile.ZipFile) -> None:
+async def _write_inputs(zf: zipfile.ZipFile, data: dict) -> None:
     print("Package => Writing inputs")
     input_dir = folder_paths.get_input_directory()
 
+    used_inputs = set()
+    for node in data["workflow_api"].values():
+        for k, v in node["inputs"].items():
+            # if k in ("image", "path"):
+            if isinstance(v, str):
+                used_inputs.add(v)
+
     for root_path, _, files in os.walk(input_dir):
         for file in files:
+            if file not in used_inputs:
+                continue
             file_path = os.path.join(root_path, file)
             relpath = os.path.relpath(file_path, input_dir)
             with zf.open(f"inputs/{relpath}", "w") as f:
@@ -148,7 +157,7 @@ async def pack_workspace(request):
         await _write_requirements(zf)
         await _write_snapshot(zf)
         await _write_workflow(zf, data)
-        await _write_inputs(zf)
+        await _write_inputs(zf, data)
 
     return web.json_response({"download_url": f"/bentoml/download/{zip_filename}"})
 
