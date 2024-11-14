@@ -1,6 +1,120 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+function createInputModal() {
+  return new Promise((resolve) => {
+    const modal = document.createElement("div");
+    modal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      z-index: 1000;
+      min-width: 300px;
+    `;
+
+    const title = document.createElement("h3");
+    title.textContent = "Enter filename";
+    title.style.cssText = `
+      margin-bottom: 15px;
+      color: #fff;
+    `;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = "ComfyUI_IDL_Package";
+    input.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      background: #333;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #fff;
+      box-sizing: border-box;
+    `;
+
+    const buttonContainer = document.createElement("div");
+    buttonContainer.style.cssText = `
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    `;
+
+    const confirmButton = document.createElement("button");
+    confirmButton.textContent = "Confirm";
+    confirmButton.style.cssText = `
+      padding: 6px 12px;
+      background: #00a67d;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    `;
+
+    const cancelButton = document.createElement("button");
+    cancelButton.textContent = "Cancel";
+    cancelButton.style.cssText = `
+      padding: 6px 12px;
+      background: #666;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    `;
+
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    `;
+
+    buttonContainer.appendChild(cancelButton);
+    buttonContainer.appendChild(confirmButton);
+    modal.appendChild(title);
+    modal.appendChild(input);
+    modal.appendChild(buttonContainer);
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+
+    const cleanup = () => {
+      modal.remove();
+      overlay.remove();
+    };
+
+    confirmButton.onclick = () => {
+      const filename = input.value.trim();
+      if (filename) {
+        cleanup();
+        resolve(filename);
+      }
+    };
+
+    cancelButton.onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    // 按Enter确认
+    input.addEventListener("keyup", (e) => {
+      if (e.key === "Enter") {
+        confirmButton.click();
+      }
+    });
+
+    // 自动选中文本
+    input.select();
+  });
+}
+
 function createDownloadModal() {
   const modal = document.createElement("div");
   modal.style.cssText = `
@@ -82,6 +196,10 @@ app.registerExtension({
     const packButton = document.createElement("button");
     packButton.textContent = "Package";
     packButton.onclick = async () => {
+      // 先让用户输入文件名
+      const filename = await createInputModal();
+      if (!filename) return; // 用户取消了操作
+      
       packButton.disabled = true;
       const downloadModal = createDownloadModal();
       
@@ -101,7 +219,7 @@ app.registerExtension({
         downloadModal.updateProgress(100);
         const link = document.createElement("a");
         link.href = downloadUrl;
-        link.download = "workspace.zip";
+        link.download = filename + ".zip";
         link.click();
 
         setTimeout(() => {
