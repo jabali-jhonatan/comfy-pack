@@ -17,7 +17,7 @@ function createInputModal() {
     `;
 
     const title = document.createElement("h3");
-    title.textContent = "Enter filename";
+    title.textContent = "Package Worlflow";
     title.style.cssText = `
       margin-bottom: 15px;
       color: #fff;
@@ -25,7 +25,7 @@ function createInputModal() {
 
     const input = document.createElement("input");
     input.type = "text";
-    input.value = "ComfyUI_IDL_Package";
+    input.value = "package";
     input.style.cssText = `
       width: 100%;
       padding: 8px;
@@ -103,14 +103,12 @@ function createInputModal() {
       resolve(null);
     };
 
-    // 按Enter确认
     input.addEventListener("keyup", (e) => {
       if (e.key === "Enter") {
         confirmButton.click();
       }
     });
 
-    // 自动选中文本
     input.select();
   });
 }
@@ -196,9 +194,8 @@ app.registerExtension({
     const packButton = document.createElement("button");
     packButton.textContent = "Package";
     packButton.onclick = async () => {
-      // 先让用户输入文件名
       const filename = await createInputModal();
-      if (!filename) return; // 用户取消了操作
+      if (!filename) return;
       
       packButton.disabled = true;
       const downloadModal = createDownloadModal();
@@ -219,7 +216,7 @@ app.registerExtension({
         downloadModal.updateProgress(100);
         const link = document.createElement("a");
         link.href = downloadUrl;
-        link.download = filename + ".zip";
+        link.download = filename + ".cpack";
         link.click();
 
         setTimeout(() => {
