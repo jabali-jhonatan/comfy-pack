@@ -8,11 +8,11 @@ app.registerExtension({
     const menu = document.querySelector(".comfy-menu");
     const separator = document.createElement("hr");
 
-		separator.style.margin = "20px 0";
-		separator.style.width = "100%";
-		menu.append(separator);
+    separator.style.margin = "20px 0";
+    separator.style.width = "100%";
+    menu.append(separator);
     const packButton = document.createElement("button");
-		packButton.textContent = "Package";
+    packButton.textContent = "Package";
     packButton.onclick = async () => {
       packButton.disabled = true;
       try {
