@@ -39,7 +39,7 @@ async def _write_snapshot(zf: zipfile.ZipFile) -> None:
     stdout, _ = await proc.communicate()
     with zf.open("snapshot.json", "w") as f:
         data = {
-            "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "python": f"{sys.version_info.major}.{sys.version_info.minor}",
             "comfyui": stdout.decode().strip(),
             "models": await _get_models(),
             "custom_nodes": await _get_custom_nodes(),

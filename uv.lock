@@ -173,15 +173,17 @@ wheels = [
 
 [[package]]
 name = "comfyui-idl"
-version = "0.0.5.dev1+g3c36cfc.d20241111"
+version = "0.1.2+d20241115"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "comfy-cli" },
     { name = "pydantic" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.1.7" },
     { name = "comfy-cli", specifier = ">=1.2.8" },
     { name = "pydantic", specifier = ">=2.9" },
 ]
