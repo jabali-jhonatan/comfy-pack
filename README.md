@@ -1,3 +1,3 @@
-# ComfyUI-IDL
+# ComfyUI-Pack
 
-ComfyUI custom nodes for input and output specification.
+A toolkit to ship, run, deploy your ComfyUI workflows.

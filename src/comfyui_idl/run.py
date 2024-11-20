@@ -39,8 +39,8 @@ class WorkflowRunner:
             workspace (str): The workspace path for ComfyUI.
         """
         self.workspace = workspace
-        self.temp_dir = Path(workspace) / "idl_run" / "temp"
-        self.output_dir = Path(workspace) / "idl_run" / "output"
+        self.temp_dir = Path(workspace) / "cli_run" / "temp"
+        self.output_dir = Path(workspace) / "cli_run" / "output"
         self.is_running = False
 
     def start(self, verbose: int = 0) -> None:

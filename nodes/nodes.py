@@ -31,15 +31,15 @@ class OutputFile:
         return {
             "required": {
                 "filename": ("STRING", {"default": "", "forceInput": True}),
-                "filename_prefix": ("STRING", {"default": "ComfyUI_IDL_"}),
+                "filename_prefix": ("STRING", {"default": "cpack_output_"}),
             },
         }
 
     RETURN_TYPES = ()
-    CATEGORY = "ComfyUI-IDL/output"
+    CATEGORY = "ComfyPack/output"
     CPACK_NODE = True
     FUNCTION = "save"
-    DESCRIPTION = "Save the input data for IDL output"
+    DESCRIPTION = "Save the input data for comfy-pack output"
 
     def save(self, filename, filename_prefix):
         if not filename_prefix:
@@ -109,7 +109,7 @@ class OutputImage:
         return {
             "required": {
                 "images": ("IMAGE", {"tooltip": "The images to save."}),
-                "filename_prefix": ("STRING", {"default": "ComfyUI_IDL_"}),
+                "filename_prefix": ("STRING", {"default": "cpack_output_"}),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -122,11 +122,11 @@ class OutputImage:
     CPACK_NODE = True
     OUTPUT_NODE = True
 
-    CATEGORY = "ComfyUI-IDL/output"
+    CATEGORY = "ComfyPack/output"
     DESCRIPTION = "Saves the input images to your ComfyUI output directory."
 
     def save_images(
-        self, images, filename_prefix="ComfyUI_IDL_", prompt=None, extra_pnginfo=None
+        self, images, filename_prefix="cpack_output_", prompt=None, extra_pnginfo=None
     ):
         filename_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
@@ -177,7 +177,7 @@ class ImageInput:
             "required": {"image": (sorted(files), {"image_upload": True})},
         }
 
-    CATEGORY = "ComfyUI-IDL/input"
+    CATEGORY = "ComfyPack/input"
     CPACK_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "load_image"
@@ -257,7 +257,7 @@ class FileInput:
     RETURN_NAMES = ("path",)
     FUNCTION = "identity"
     CPACK_NODE = True
-    CATEGORY = "ComfyUI-IDL/input"
+    CATEGORY = "ComfyPack/input"
 
     def identity(self, path):
         return (path,)
@@ -283,7 +283,7 @@ class ValueInput:
     RENAME = ("value",)
     FUNCTION = "identity"
     CPACK_NODE = True
-    CATEGORY = "ComfyUI-IDL/input"
+    CATEGORY = "ComfyPack/input"
 
     def identity(self, input):
         return (input,)

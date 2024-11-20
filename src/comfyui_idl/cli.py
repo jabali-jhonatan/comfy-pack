@@ -16,7 +16,7 @@ import tempfile
 )
 @click.pass_context
 def main(ctx, verbose):
-    """ComfyUI IDL CLI"""
+    """ComfyUI Pack CLI"""
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
 
