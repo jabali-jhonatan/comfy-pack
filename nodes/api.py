@@ -32,7 +32,7 @@ async def _write_requirements(zf: zipfile.ZipFile) -> None:
         f.write(stdout)
 
 
-async def _write_snapshot(zf: zipfile.ZipFile) -> None:
+async def _write_snapshot(zf: zipfile.ZipFile, data: dict) -> None:
     proc = await asyncio.subprocess.create_subprocess_exec(
         "git", "rev-parse", "HEAD", stdout=subprocess.PIPE, cwd=folder_paths.base_path
     )
@@ -41,13 +41,13 @@ async def _write_snapshot(zf: zipfile.ZipFile) -> None:
         data = {
             "python": f"{sys.version_info.major}.{sys.version_info.minor}",
             "comfyui": stdout.decode().strip(),
-            "models": await _get_models(),
+            "models": await _get_models(data),
             "custom_nodes": await _get_custom_nodes(),
         }
         f.write(json.dumps(data, indent=2).encode())
 
 
-async def _get_models() -> list:
+async def _get_models(data: dict) -> list:
     print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
         "git",
@@ -57,17 +57,28 @@ async def _get_models() -> list:
         stdout=subprocess.PIPE,
     )
     stdout, _ = await proc.communicate()
+
+    used_inputs = set()
+    for node in data["workflow_api"].values():
+        for _, v in node["inputs"].items():
+            if isinstance(v, str):
+                used_inputs.add(v)
+
     models = []
     for line in stdout.decode().splitlines():
         if os.path.basename(line).startswith("."):
             continue
         filename = os.path.abspath(line)
         relpath = os.path.relpath(filename, folder_paths.base_path)
+
+        relpath_path = Path(relpath)
+
         with open(filename, "rb") as model:
             models.append(
                 {
                     "filename": relpath,
                     "sha256": hashlib.sha256(model.read()).hexdigest(),
+                    "explicit": relpath_path.name in used_inputs,
                 }
             )
     return models
@@ -127,8 +138,7 @@ async def _write_inputs(zf: zipfile.ZipFile, data: dict) -> None:
 
     used_inputs = set()
     for node in data["workflow_api"].values():
-        for k, v in node["inputs"].items():
-            # if k in ("image", "path"):
+        for _, v in node["inputs"].items():
             if isinstance(v, str):
                 used_inputs.add(v)
 
@@ -156,7 +166,7 @@ async def pack_workspace(request):
 
     with zipfile.ZipFile(TEMP_FOLDER / zip_filename, "w") as zf:
         await _write_requirements(zf)
-        await _write_snapshot(zf)
+        await _write_snapshot(zf, data)
         await _write_workflow(zf, data)
         await _write_inputs(zf, data)
 

@@ -159,6 +159,7 @@ def run(ctx, cpack: str, output_dir: str):
 
     workspace = _get_cache_workspace(cpack)
     if not (workspace / "DONE").exists():
+        console.print("\n[green]✓ Restoring ComfyUI Workspace...[/green]")
         if workspace.exists():
             shutil.rmtree(workspace)
         install(cpack, workspace)
