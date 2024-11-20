@@ -80,6 +80,7 @@ def install_dependencies(snapshot: dict, req_file: str, workspace: Path):
     )
     with open(venv / "DONE", "w") as f:
         f.write("DONE")
+    return venv_py
 
 
 def install(cpack: str | Path, workspace: str | Path = "workspace") -> None:
@@ -93,11 +94,6 @@ def install(cpack: str | Path, workspace: str | Path = "workspace") -> None:
         install_comfyui(snapshot, workspace)
         install_custom_modules(snapshot, workspace)
         install_dependencies(snapshot, str(req_txt_file), workspace)
+
         for f in (pack_dir / "inputs").glob("*"):
             shutil.copy(f, workspace / "input" / f.name)
-
-
-if __name__ == "__main__":
-    import sys
-
-    install(sys.argv[1])

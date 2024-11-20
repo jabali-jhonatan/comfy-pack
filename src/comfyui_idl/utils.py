@@ -8,12 +8,12 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
 BENTO_OUTPUT_NODES = {
-    "BentoOutputPath",
+    "BentoOutputFile",
     "BentoOutputImage",
 }
 
 BENTO_PATH_INPUT_NODES = {
-    "BentoInputPath",
+    "BentoInputFile",
     "BentoInputImage",
 }
 
