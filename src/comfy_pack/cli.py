@@ -27,17 +27,29 @@ def main(ctx, verbose):
 )
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
 @click.option(
-    "--output",
-    "-o",
+    "--dir",
+    "-d",
     default="ComfyUI",
-    help="target directory to unpack the ComfyUI project",
+    help="target directory to restore the ComfyUI project",
     type=click.Path(file_okay=False),
 )
 @click.pass_context
-def restore_cmd(ctx, cpack: str, workspace: str):
+def restore_cmd(ctx, cpack: str, dir: str):
     from .package import install
+    from rich.console import Console
 
-    install(cpack, workspace, ctx.obj["verbose"])
+    console = Console()
+
+    install(cpack, dir, ctx.obj["verbose"])
+    console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
+    console.print(f"{dir}")
+
+    console.print(
+        "\n[green] Next steps: [/green]\n"
+        "1. Change directory to the restored workspace\n"
+        "2. Source the virtual environment by running `source .venv/bin/activate`\n"
+        "3. Run the ComfyUI project by running `python main.py`"
+    )
 
 
 def _print_schema(schema, verbose: int = 0):
