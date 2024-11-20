@@ -156,7 +156,12 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
     return create_model("ParsedWorkflowTemplate", **input_fields)
 
 
-def populate_workflow(workflow: dict, output_path: Path, **inputs) -> dict:
+def populate_workflow(
+    workflow: dict,
+    output_path: Path,
+    session_id: str = "",
+    **inputs,
+) -> dict:
     """
     Fills the input values and output path into the workflow.
 
@@ -182,7 +187,7 @@ def populate_workflow(workflow: dict, output_path: Path, **inputs) -> dict:
         node_id = node["id"]
         if node["class_type"] in BENTO_OUTPUT_NODES:
             workflow[node_id]["inputs"]["filename_prefix"] = (
-                output_path / f"{node_id}_"
+                output_path / f"{session_id}{node_id}_"
             ).as_posix()
     return workflow
 
@@ -190,6 +195,7 @@ def populate_workflow(workflow: dict, output_path: Path, **inputs) -> dict:
 def retrieve_workflow_outputs(
     workflow: dict,
     output_path: Path,
+    session_id: str = "",
 ) -> Union[Path, list[Path], dict[str, Path], dict[str, list[Path]]]:
     """
     Gets the output file(s) from the workflow.
@@ -224,7 +230,7 @@ def retrieve_workflow_outputs(
         raise ValueError(f"Output node {name} is not of type {BENTO_OUTPUT_NODES}")
     node_id = node["id"]
 
-    outs = list(output_path.glob(f"{node_id}_*"))
+    outs = list(output_path.glob(f"{session_id}{node_id}_*"))
     if len(outs) == 1:
         return outs[0]
     return outs

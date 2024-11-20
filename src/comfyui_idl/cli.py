@@ -21,7 +21,10 @@ def main(ctx, verbose):
     ctx.obj["verbose"] = verbose
 
 
-@main.command(name="unpack")
+@main.command(
+    name="restore",
+    help="Restore the ComfyUI workspace to specified directory",
+)
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
 @click.option(
     "--output",
@@ -119,6 +122,7 @@ def _get_cache_workspace(cpack: str):
         "ignore_unknown_options": True,
         "allow_extra_args": True,
     },
+    help="Run a ComfyUI package with the given inputs",
 )
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
 @click.option("--output-dir", "-o", type=click.Path(), default=".")
@@ -161,8 +165,8 @@ def run(ctx, cpack: str, output_dir: str):
         install(cpack, workspace)
         with open(workspace / "DONE", "w") as f:
             f.write("DONE")
-    console.print(f"\n[green]✓ ComfyUI Workspace is retrieved![/green]")
-    console.print(f"Workspace: {workspace}")
+    console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
+    console.print(f"{workspace}")
 
     from .run import WorkflowRunner
 
@@ -171,14 +175,23 @@ def run(ctx, cpack: str, output_dir: str):
         runner = WorkflowRunner(str(workspace.absolute()))
         runner.start()
         console.print("\n[green]✓ ComfyUI is launched in the background![/green]")
-        runner.run_workflow(
+        results = runner.run_workflow(
             workflow,
             Path(output_dir).absolute(),
             verbose=ctx.obj["verbose"],
             **validated_data.model_dump(),
         )
         console.print("\n[green]✓ Workflow is executed successfully![/green]")
-        console.print(f"Output is saved to {Path(output_dir).absolute()}")
+        if results:
+            console.print("\n[green]✓ Retrieved outputs:[/green]")
+        if isinstance(results, dict):
+            for field, value in results.items():
+                console.print(f"{field}: {value}")
+        elif isinstance(results, list):
+            for i, value in enumerate(results):
+                console.print(f"{i}: {value}")
+        else:
+            console.print(results)
     finally:
         if runner:
             runner.stop(verbose=ctx.obj["verbose"])

@@ -152,9 +152,11 @@ class WorkflowRunner:
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
 
+        run_id = os.urandom(8).hex()
         populate_workflow(
             workflow_copy,
             output_dir,
+            session_id=run_id,
             **kwargs,
         )
 
@@ -177,10 +179,13 @@ class WorkflowRunner:
             "--wait",
             *extra_args,
         ]
-        subprocess.run(command, check=True)
+        env = os.environ.copy()
+        env["NO_COLOR"] = "1"
+        subprocess.run(command, check=True, env=env)
 
         # retrieve the output
         return retrieve_workflow_outputs(
             workflow_copy,
             output_dir,
+            session_id=run_id,
         )
