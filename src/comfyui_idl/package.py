@@ -10,20 +10,35 @@ from pathlib import Path
 COMFYUI_REPO = "https://github.com/comfyanonymous/ComfyUI.git"
 
 
-def _clone_commit(url: str, commit: str, dir: Path):
-    subprocess.check_call(["git", "clone", "--filter=blob:none", url, dir])
-    subprocess.check_call(["git", "fetch", "-q", url, commit], cwd=dir)
-    subprocess.check_call(["git", "checkout", "FETCH_HEAD"], cwd=dir)
+def _clone_commit(url: str, commit: str, dir: Path, verbose: int = 0):
+    stdout = None if verbose > 0 else subprocess.DEVNULL
+    stderr = None if verbose > 1 else subprocess.DEVNULL
+    subprocess.check_call(
+        ["git", "clone", "--filter=blob:none", url, dir],
+        stdout=stdout,
+        stderr=stderr,
+    )
+    subprocess.check_call(
+        ["git", "fetch", "-q", url, commit],
+        cwd=dir,
+        stdout=stdout,
+        stderr=stderr,
+    )
+    subprocess.check_call(
+        ["git", "checkout", "FETCH_HEAD"],
+        cwd=dir,
+        stdout=stdout,
+        stderr=stderr,
+    )
 
 
-def install_comfyui(snapshot, workspace: Path):
+def install_comfyui(snapshot, workspace: Path, verbose: int = 0):
     print("Installing ComfyUI")
     comfyui_commit = snapshot["comfyui"]
+    _clone_commit(COMFYUI_REPO, comfyui_commit, workspace, verbose=verbose)
 
-    _clone_commit(COMFYUI_REPO, comfyui_commit, workspace)
 
-
-def install_custom_modules(snapshot, workspace: Path):
+def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
     print("Installing custom nodes")
     for module in snapshot["custom_nodes"]:
         url = module["url"]
@@ -31,15 +46,26 @@ def install_custom_modules(snapshot, workspace: Path):
         module_dir = workspace / "custom_nodes" / directory
 
         commit_hash = module["commit_hash"]
-        _clone_commit(url, commit_hash, module_dir)
+        _clone_commit(url, commit_hash, module_dir, verbose=verbose)
 
 
-def install_dependencies(snapshot: dict, req_file: str, workspace: Path):
-    print("Installing Python dependencies")
+def install_dependencies(
+    snapshot: dict,
+    req_file: str,
+    workspace: Path,
+    verbose: int = 0,
+):
+    if verbose > 0:
+        print("Installing Python dependencies")
     python_version = snapshot["python"]
+    stdout = None if verbose > 0 else subprocess.DEVNULL
+    stderr = None if verbose > 1 else subprocess.DEVNULL
+
     subprocess.check_call(
         ["uv", "python", "install", python_version],
         cwd=workspace,
+        stdout=stdout,
+        stderr=stderr,
     )
     venv = workspace / ".venv"
     if (venv / "DONE").exists():
@@ -55,6 +81,8 @@ def install_dependencies(snapshot: dict, req_file: str, workspace: Path):
             python_version,
             venv,
         ],
+        stdout=stdout,
+        stderr=stderr,
     )
     subprocess.check_call(
         [
@@ -65,6 +93,8 @@ def install_dependencies(snapshot: dict, req_file: str, workspace: Path):
             str(venv_py),
             "pip",
         ],
+        stdout=stdout,
+        stderr=stderr,
     )
     subprocess.check_call(
         [
@@ -77,13 +107,15 @@ def install_dependencies(snapshot: dict, req_file: str, workspace: Path):
             req_file,
             "--no-deps",
         ],
+        stdout=stdout,
+        stderr=stderr,
     )
     with open(venv / "DONE", "w") as f:
         f.write("DONE")
     return venv_py
 
 
-def install(cpack: str | Path, workspace: str | Path = "workspace") -> None:
+def install(cpack: str | Path, workspace: str | Path = "workspace", verbose: int = 0):
     workspace = Path(workspace)
     with tempfile.TemporaryDirectory() as temp_dir:
         pack_dir = Path(temp_dir) / ".cpack"
@@ -91,9 +123,9 @@ def install(cpack: str | Path, workspace: str | Path = "workspace") -> None:
         snapshot = json.loads((pack_dir / "snapshot.json").read_text())
         req_txt_file = pack_dir / "requirements.txt"
 
-        install_comfyui(snapshot, workspace)
-        install_custom_modules(snapshot, workspace)
-        install_dependencies(snapshot, str(req_txt_file), workspace)
+        install_comfyui(snapshot, workspace, verbose=verbose)
+        install_custom_modules(snapshot, workspace, verbose=verbose)
+        install_dependencies(snapshot, str(req_txt_file), workspace, verbose=verbose)
 
         for f in (pack_dir / "inputs").glob("*"):
             shutil.copy(f, workspace / "input" / f.name)

@@ -8,8 +8,17 @@ import tempfile
 
 
 @click.group()
-def main():
+@click.option(
+    "--verbose",
+    "-v",
+    count=True,
+    help="Increase verbosity level (use multiple times for more verbosity)",
+)
+@click.pass_context
+def main(ctx, verbose):
     """ComfyUI IDL CLI"""
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
 
 
 @main.command(name="unpack")
@@ -21,7 +30,8 @@ def main():
     help="target directory to unpack the ComfyUI project",
     type=click.Path(file_okay=False),
 )
-def unpack_cmd(cpack: str, workspace: str):
+@click.pass_context
+def unpack_cmd(ctx, cpack: str, workspace: str):
     """
     Install ComfyUI workspace from a zipped package.
 
@@ -37,10 +47,10 @@ def unpack_cmd(cpack: str, workspace: str):
     """
     from .package import install
 
-    install(cpack, workspace)
+    install(cpack, workspace, ctx.obj["verbose"])
 
 
-def _print_schema(schema):
+def _print_schema(schema, verbose: int = 0):
     from rich.table import Table
     from rich.console import Console
 
@@ -77,7 +87,8 @@ def _print_schema(schema):
 
 @main.command(name="info")
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
-def info_cmd(cpack: str):
+@click.pass_context
+def info_cmd(ctx, cpack: str):
     """
     Display information about the ComfyUI package.
 
@@ -90,8 +101,9 @@ def info_cmd(cpack: str):
         pack_dir = Path(temp_dir) / ".cpack"
         shutil.unpack_archive(cpack, pack_dir)
         workflow = json.loads((pack_dir / "workflow_api.json").read_text())
+
     inputs = generate_input_model(workflow)
-    _print_schema(inputs.model_json_schema())
+    _print_schema(inputs.model_json_schema(), ctx.obj["verbose"])
 
 
 @functools.lru_cache
@@ -149,6 +161,8 @@ def run(ctx, cpack: str, output_dir: str):
         install(cpack, workspace)
         with open(workspace / "DONE", "w") as f:
             f.write("DONE")
+    console.print(f"\n[green]✓ ComfyUI Workspace is retrieved![/green]")
+    console.print(f"Workspace: {workspace}")
 
     from .run import WorkflowRunner
 
@@ -156,11 +170,15 @@ def run(ctx, cpack: str, output_dir: str):
     try:
         runner = WorkflowRunner(str(workspace.absolute()))
         runner.start()
+        console.print("\n[green]✓ ComfyUI is launched in the background![/green]")
         runner.run_workflow(
             workflow,
             Path(output_dir).absolute(),
+            verbose=ctx.obj["verbose"],
             **validated_data.model_dump(),
         )
+        console.print("\n[green]✓ Workflow is executed successfully![/green]")
+        console.print(f"Output is saved to {Path(output_dir).absolute()}")
     finally:
         if runner:
-            runner.stop()
+            runner.stop(verbose=ctx.obj["verbose"])

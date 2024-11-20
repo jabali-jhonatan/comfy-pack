@@ -6,7 +6,6 @@ import logging
 import os
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Any, Union
 
@@ -40,16 +39,19 @@ class WorkflowRunner:
             workspace (str): The workspace path for ComfyUI.
         """
         self.workspace = workspace
-
-        # The ComfyUI process
+        self.temp_dir = Path(workspace) / "idl_run" / "temp"
+        self.output_dir = Path(workspace) / "idl_run" / "output"
         self.is_running = False
 
-    def start(self) -> None:
+    def start(self, verbose: int = 0) -> None:
         """
         Start the ComfyUI process.
 
         This method starts ComfyUI in the background, sets up necessary directories,
         and disables tracking for workaround purposes.
+
+        Args:
+            verbose (int, optional): Verbosity level. If 0, suppress stdout. Defaults to 0.
 
         Raises:
             RuntimeError: If ComfyUI is already running.
@@ -60,8 +62,12 @@ class WorkflowRunner:
         logger.info(
             "Disable tracking from Comfy CLI, not for privacy concerns, but to workaround a bug"
         )
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        stdout = None if verbose > 0 else subprocess.DEVNULL
         command = ["comfy", "--skip-prompt", "tracking", "disable"]
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, stdout=stdout)
         logger.info("Successfully disabled Comfy CLI tracking")
 
         logger.info("Preparing directories required by ComfyUI...")
@@ -73,15 +79,20 @@ class WorkflowRunner:
             self.workspace,
             "launch",
             "--background",
+            "--",
+            "--output-directory",
+            self.output_dir,
+            "--temp-directory",
+            self.temp_dir,
         ]
-        if subprocess.run(command, check=True):
+        if subprocess.run(command, check=True, stdout=stdout):
             self.is_running = True
             _probe_comfyui_server()
             logger.info("Successfully started ComfyUI in the background")
         else:
             logger.error("Failed to start ComfyUI in the background")
 
-    def stop(self) -> None:
+    def stop(self, verbose: int = 0) -> None:
         """
         Stop the ComfyUI process.
 
@@ -95,13 +106,13 @@ class WorkflowRunner:
 
         logger.info("Stopping ComfyUI...")
         command = ["comfy", "stop"]
-        subprocess.run(command, check=True)
+        stdout = None if verbose > 0 else subprocess.DEVNULL
+        subprocess.run(command, check=True, stdout=stdout)
         logger.info("Successfully stopped ComfyUI")
 
         logger.info("Cleaning up temporary directory...")
-        shutil.rmtree(Path(self.workspace) / "output", ignore_errors=True)
-        # shutil.rmtree(Path(self.workspace) / "temp", ignore_errors=True)
-        shutil.rmtree(Path(self.workspace) / "worflow.json", ignore_errors=True)
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        shutil.rmtree(self.output_dir, ignore_errors=True)
         logger.info("Successfully cleaned up temporary directory")
 
         self.is_running = False
@@ -109,8 +120,9 @@ class WorkflowRunner:
     def run_workflow(
         self,
         workflow: dict,
-        temp_dir: Union[str, Path, None] = None,
+        output_dir: Union[str, Path, None] = None,
         timeout: int = 300,
+        verbose: int = 0,
         **kwargs: Any,
     ) -> Any:
         """
@@ -121,7 +133,7 @@ class WorkflowRunner:
 
         Args:
             workflow (dict): The workflow to run.
-            temp_dir (Union[str, Path, None], optional): Temporary directory for the workflow. Defaults to None.
+            output_dir (Union[str, Path, None], optional): Temporary directory for the workflow. Defaults to None.
             timeout (int, optional): Timeout for the workflow execution in seconds. Defaults to 300.
             **kwargs: Additional keyword arguments for workflow population.
 
@@ -135,14 +147,14 @@ class WorkflowRunner:
             raise RuntimeError("ComfyUI Runner is not started yet")
 
         workflow_copy = copy.deepcopy(workflow)
-        if temp_dir is None:
-            temp_dir = Path(".")
-        if isinstance(temp_dir, str):
-            temp_dir = Path(temp_dir)
+        if output_dir is None:
+            output_dir = Path(".")
+        if isinstance(output_dir, str):
+            output_dir = Path(output_dir)
 
         populate_workflow(
             workflow_copy,
-            temp_dir,
+            output_dir,
             **kwargs,
         )
 
@@ -151,7 +163,7 @@ class WorkflowRunner:
             json.dump(workflow_copy, file)
 
         extra_args = []
-        if "BENTOML_DEBUG" in os.environ:
+        if verbose > 0:
             extra_args.append("--verbose")
 
         # Execute the workflow
@@ -170,5 +182,5 @@ class WorkflowRunner:
         # retrieve the output
         return retrieve_workflow_outputs(
             workflow_copy,
-            temp_dir,
+            output_dir,
         )
