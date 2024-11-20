@@ -79,6 +79,7 @@ async def _get_models(data: dict) -> list:
                     "filename": relpath,
                     "sha256": hashlib.sha256(model.read()).hexdigest(),
                     "explicit": relpath_path.name in used_inputs,
+                    "size": os.path.getsize(filename),
                 }
             )
     return models
