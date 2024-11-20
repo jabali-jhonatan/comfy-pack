@@ -29,50 +29,16 @@ def _probe_comfyui_server():
 
 
 class WorkflowRunner:
-    """
-    A class to manage and run ComfyUI workflows.
-
-    This class handles the initialization, starting, stopping, and execution of ComfyUI workflows.
-    It manages temporary and output directories, and provides methods to run workflows with specified parameters.
-
-    Attributes:
-        temp_dir (Path): The temporary directory for ComfyUI operations.
-        output_dir (Path): The output directory for ComfyUI results.
-        workspace (str): The workspace path for ComfyUI.
-        is_running (bool): Flag indicating whether ComfyUI is currently running.
-    """
-
     def __init__(
         self,
         workspace: str,
-        temp_dir: Union[str, Path, None] = None,
-        output_dir: Union[str, Path, None] = None,
     ) -> None:
         """
         Initialize the WorkflowRunner.
 
         Args:
             workspace (str): The workspace path for ComfyUI.
-            temp_dir (Union[str, Path, None], optional): The temporary directory. Defaults to None.
-            output_dir (Union[str, Path, None], optional): The output directory. Defaults to None.
         """
-        if temp_dir is None:
-            self.temp_dir = Path(tempfile.mkdtemp())
-            self._cleanup_temp_dir = True
-        elif isinstance(temp_dir, str):
-            self.temp_dir = Path(temp_dir)
-            self._cleanup_temp_dir = False
-        else:
-            self.temp_dir = temp_dir
-            self._cleanup_temp_dir = False
-
-        if output_dir is None:
-            self.output_dir = self.temp_dir
-        elif isinstance(output_dir, str):
-            self.output_dir = Path(output_dir)
-        else:
-            self.output_dir = output_dir
-
         self.workspace = workspace
 
         # The ComfyUI process
@@ -99,10 +65,6 @@ class WorkflowRunner:
         logger.info("Successfully disabled Comfy CLI tracking")
 
         logger.info("Preparing directories required by ComfyUI...")
-        os.makedirs(self.output_dir, exist_ok=True)
-        os.makedirs(self.temp_dir, exist_ok=True)
-        print("Comfy Output Path:", self.output_dir)
-        print("Comfy Temp Path:", self.temp_dir)
 
         logger.info("Starting ComfyUI in the background...")
         command = [
@@ -111,11 +73,6 @@ class WorkflowRunner:
             self.workspace,
             "launch",
             "--background",
-            "--",
-            "--output-directory",
-            self.output_dir,
-            "--temp-directory",
-            self.temp_dir,
         ]
         if subprocess.run(command, check=True):
             self.is_running = True
@@ -140,10 +97,13 @@ class WorkflowRunner:
         command = ["comfy", "stop"]
         subprocess.run(command, check=True)
         logger.info("Successfully stopped ComfyUI")
-        if self._cleanup_temp_dir:
-            logger.info("Cleaning up temporary directory...")
-            shutil.rmtree(self.temp_dir)
-            logger.info("Successfully cleaned up temporary directory")
+
+        logger.info("Cleaning up temporary directory...")
+        shutil.rmtree(Path(self.workspace) / "output", ignore_errors=True)
+        # shutil.rmtree(Path(self.workspace) / "temp", ignore_errors=True)
+        shutil.rmtree(Path(self.workspace) / "worflow.json", ignore_errors=True)
+        logger.info("Successfully cleaned up temporary directory")
+
         self.is_running = False
 
     def run_workflow(
@@ -176,7 +136,7 @@ class WorkflowRunner:
 
         workflow_copy = copy.deepcopy(workflow)
         if temp_dir is None:
-            temp_dir = self.temp_dir
+            temp_dir = Path(".")
         if isinstance(temp_dir, str):
             temp_dir = Path(temp_dir)
 
@@ -186,13 +146,14 @@ class WorkflowRunner:
             **kwargs,
         )
 
-        workflow_file_path = temp_dir / "workflow.json"
+        workflow_file_path = Path(self.workspace) / "workflow.json"
         with open(workflow_file_path, "w") as file:
             json.dump(workflow_copy, file)
 
         extra_args = []
         if "BENTOML_DEBUG" in os.environ:
             extra_args.append("--verbose")
+
         # Execute the workflow
         command = [
             "comfy",
