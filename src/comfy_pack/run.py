@@ -9,10 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Union
 
-from comfy_pack.utils import (
-    populate_workflow,
-    retrieve_workflow_outputs,
-)
+from .utils import populate_workflow, retrieve_workflow_outputs
 
 logger = logging.getLogger(__name__)
 
