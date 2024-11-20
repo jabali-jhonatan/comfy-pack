@@ -1,5 +1,5 @@
-from comfyui_idl.run import WorkflowRunner
-from comfyui_idl.utils import (
+from comfy_pack.run import WorkflowRunner
+from comfy_pack.utils import (
     generate_input_model,
     parse_workflow,
     populate_workflow,

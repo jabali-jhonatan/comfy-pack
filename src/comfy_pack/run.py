@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Union
 
-from comfyui_idl.utils import (
+from comfy_pack.utils import (
     populate_workflow,
     retrieve_workflow_outputs,
 )

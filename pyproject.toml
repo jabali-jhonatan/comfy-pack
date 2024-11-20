@@ -1,5 +1,5 @@
 [project]
-name = "comfyui-idl"
+name = "comfy-pack"
 description = "ComfyUI Interface Definition Language"
 authors = [{ name = "Frost Ming", email = "frost@bentoml.com" }]
 readme = "README.md"
@@ -21,7 +21,7 @@ classifiers = [
 Homepage = "https://github.com/bentoml/ComfyUI-IDL"
 
 [project.scripts]
-comfy-idl = "comfyui_idl.cli:main"
+comfy-pack = "comfy_pack.cli:main"
 
 [build-system]
 requires = ["pdm-backend"]

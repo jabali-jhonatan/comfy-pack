@@ -34,20 +34,7 @@ def main(ctx, verbose):
     type=click.Path(file_okay=False),
 )
 @click.pass_context
-def unpack_cmd(ctx, cpack: str, workspace: str):
-    """
-    Install ComfyUI workspace from a zipped package.
-
-    Example:
-
-        # Install to the default directory(`workspace`)
-
-        $ comfyui_idl install workspace.cpack.zip
-
-        # Install to a different directory
-
-        $ comfyui_idl install -w my_workspace workspace.cpack.zip
-    """
+def restore_cmd(ctx, cpack: str, workspace: str):
     from .package import install
 
     install(cpack, workspace, ctx.obj["verbose"])
@@ -96,7 +83,7 @@ def info_cmd(ctx, cpack: str):
     Display information about the ComfyUI package.
 
     Example:
-        $ comfyui_idl info workspace.cpack.zip
+        $ comfy_pack info workspace.cpack.zip
     """
     from .utils import generate_input_model
 
