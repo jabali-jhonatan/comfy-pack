@@ -182,7 +182,7 @@ function createDownloadModal() {
 }
 
 app.registerExtension({
-  name: "Comfy.BentoExtension",
+  name: "Comfy.CPackExtension",
 
   async setup() {
     const menu = document.querySelector(".comfy-menu");

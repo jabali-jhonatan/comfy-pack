@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING, Any, Literal, Union
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
-BENTO_OUTPUT_NODES = {
-    "BentoOutputFile",
-    "BentoOutputImage",
+CPACK_OUTPUT_NODES = {
+    "CPackOutputFile",
+    "CPackOutputImage",
 }
 
-BENTO_PATH_INPUT_NODES = {
-    "BentoInputFile",
-    "BentoInputImage",
+CPACK_PATH_INPUT_NODES = {
+    "CPackInputFile",
+    "CPackInputImage",
 }
 
 
@@ -84,12 +84,12 @@ def _parse_workflow(workflow: dict) -> tuple[dict[str, Any], dict[str, Any]]:
 
     for id, node in workflow.items():
         node["id"] = id
-        if node["class_type"].startswith("BentoInput"):
+        if node["class_type"].startswith("CPackInput"):
             name = _get_node_identifier(node, dep_map)
             if name in inputs:
                 name = f"{name}_{id}"
             inputs[name] = node
-        elif node["class_type"].startswith("BentoOutput"):
+        elif node["class_type"].startswith("CPackOutput"):
             name = _get_node_identifier(node)
             if name in inputs:
                 name = f"{name}_{id}"
@@ -126,9 +126,9 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
     input_fields = {}
     for name, node in inputs.items():
         class_type = node["class_type"]
-        if class_type in BENTO_PATH_INPUT_NODES:
+        if class_type in CPACK_PATH_INPUT_NODES:
             field = (Path, Field())
-        elif class_type == "BentoInputValue":
+        elif class_type == "CPackInputValue":
             options = node.get("_meta", {}).get("options")
             value = _get_node_value(node)
             if not options:
@@ -179,13 +179,13 @@ def populate_workflow(
     input_spec, output_spec = _parse_workflow(workflow)
     for k, v in inputs.items():
         node = input_spec[k]
-        if not node["class_type"].startswith("BentoInput"):
+        if not node["class_type"].startswith("CPackInput"):
             raise ValueError(f"Node {k} is not an input node")
         _set_node_value(workflow[node["id"]], v)
 
     for _, node in output_spec.items():
         node_id = node["id"]
-        if node["class_type"] in BENTO_OUTPUT_NODES:
+        if node["class_type"] in CPACK_OUTPUT_NODES:
             workflow[node_id]["inputs"]["filename_prefix"] = (
                 output_path / f"{session_id}{node_id}_"
             ).as_posix()
@@ -226,8 +226,8 @@ def retrieve_workflow_outputs(
         return value_map
 
     name, node = next(iter(outputs.items()))
-    if node["class_type"] not in BENTO_OUTPUT_NODES:
-        raise ValueError(f"Output node {name} is not of type {BENTO_OUTPUT_NODES}")
+    if node["class_type"] not in CPACK_OUTPUT_NODES:
+        raise ValueError(f"Output node {name} is not of type {CPACK_OUTPUT_NODES}")
     node_id = node["id"]
 
     outs = list(output_path.glob(f"{session_id}{node_id}_*"))

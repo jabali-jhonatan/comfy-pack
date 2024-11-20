@@ -37,7 +37,7 @@ class OutputFile:
 
     RETURN_TYPES = ()
     CATEGORY = "ComfyUI-IDL/output"
-    BENTOML_NODE = True
+    CPACK_NODE = True
     FUNCTION = "save"
     DESCRIPTION = "Save the input data for IDL output"
 
@@ -119,7 +119,7 @@ class OutputImage:
 
     RETURN_TYPES = ()
     FUNCTION = "save_images"
-    BENTOML_NODE = True
+    CPACK_NODE = True
     OUTPUT_NODE = True
 
     CATEGORY = "ComfyUI-IDL/output"
@@ -178,7 +178,7 @@ class ImageInput:
         }
 
     CATEGORY = "ComfyUI-IDL/input"
-    BENTOML_NODE = True
+    CPACK_NODE = True
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "load_image"
 
@@ -256,7 +256,7 @@ class FileInput:
     RETURN_TYPES = (anytype,)
     RETURN_NAMES = ("path",)
     FUNCTION = "identity"
-    BENTOML_NODE = True
+    CPACK_NODE = True
     CATEGORY = "ComfyUI-IDL/input"
 
     def identity(self, path):
@@ -282,7 +282,7 @@ class ValueInput:
     RETURN_TYPES = (anytype,)
     RENAME = ("value",)
     FUNCTION = "identity"
-    BENTOML_NODE = True
+    CPACK_NODE = True
     CATEGORY = "ComfyUI-IDL/input"
 
     def identity(self, input):
@@ -295,17 +295,17 @@ class ValueInput:
 
 
 NODE_CLASS_MAPPINGS = {
-    "BentoOutputFile": OutputFile,
-    "BentoOutputImage": OutputImage,
-    "BentoInputImage": ImageInput,
-    "BentoInputFile": FileInput,
-    "BentoInputValue": ValueInput,
+    "CPackOutputFile": OutputFile,
+    "CPackOutputImage": OutputImage,
+    "CPackInputImage": ImageInput,
+    "CPackInputFile": FileInput,
+    "CPackInputValue": ValueInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "BentoInputImage": "Image Input",
-    "BentoInputFile": "File Input",
-    "BentoOutputImage": "Image Output",
-    "BentoOutputFile": "File Output",
-    "BentoInputValue": "Plain Value Input",
+    "CPackInputImage": "Image Input",
+    "CPackInputFile": "File Input",
+    "CPackOutputImage": "Image Output",
+    "CPackOutputFile": "File Output",
+    "CPackInputValue": "Plain Value Input",
 }
