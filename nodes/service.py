@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Any, cast
 
@@ -39,7 +40,7 @@ class ComfyService:
         self.comfy_proc = comfy_pack.run.WorkflowRunner(
             str(comfy_workspace), str(INPUT_DIR)
         )
-        self.comfy_proc.start()
+        self.comfy_proc.start(verbose=int("BENTOML_DEBUG" in os.environ))
 
     @bentoml.api(input_spec=InputModel)
     def generate(
@@ -74,19 +75,25 @@ class ComfyService:
         with BASE_DIR.joinpath("snapshot.json").open("rb") as f:
             snapshot = json.load(f)
 
-        install_comfyui(snapshot, comfy_workspace, verbose=verbose)
-        install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
-        for model in snapshot["models"]:
-            model_tag = model.get("model_tag")
-            if not model_tag:
-                logger.warning(
-                    "Model %s is not in model store, the workflow may not work",
-                    model["filename"],
-                )
-                continue
-            model_path = comfy_workspace / cast(str, model["filename"])
-            model_path.parent.mkdir(parents=True, exist_ok=True)
-            bento_model = bentoml.models.get(model_tag)
-            model_file = bento_model.path_of(model_path.name)
-            logger.info("Copying %s to %s", model_file, model_path)
-            model_path.symlink_to(model_file)
+        if not comfy_workspace.joinpath(".DONE").exists():
+            if comfy_workspace.exists():
+                logger.info("Removing existing workspace")
+                shutil.rmtree(comfy_workspace, ignore_errors=True)
+            install_comfyui(snapshot, comfy_workspace, verbose=verbose)
+            install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
+
+            for model in snapshot["models"]:
+                model_tag = model.get("model_tag")
+                if not model_tag:
+                    logger.warning(
+                        "Model %s is not in model store, the workflow may not work",
+                        model["filename"],
+                    )
+                    continue
+                model_path = comfy_workspace / cast(str, model["filename"])
+                model_path.parent.mkdir(parents=True, exist_ok=True)
+                bento_model = bentoml.models.get(model_tag)
+                model_file = bento_model.path_of(model_path.name)
+                logger.info("Copying %s to %s", model_file, model_path)
+                model_path.symlink_to(model_file)
+            comfy_workspace.joinpath(".DONE").touch()
