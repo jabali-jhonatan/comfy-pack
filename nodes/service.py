@@ -98,7 +98,6 @@ class ComfyService:
                 logger.info("Removing existing workspace")
                 shutil.rmtree(comfy_workspace, ignore_errors=True)
             install_comfyui(snapshot, comfy_workspace, verbose=verbose)
-            install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
 
             for model in snapshot["models"]:
                 model_tag = model.get("model_tag")
@@ -114,4 +113,5 @@ class ComfyService:
                 model_file = bento_model.path_of(model_path.name)
                 logger.info("Copying %s to %s", model_file, model_path)
                 model_path.symlink_to(model_file)
+            install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
             comfy_workspace.joinpath(".DONE").touch()

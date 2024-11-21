@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import os
 import shutil
 import subprocess
@@ -60,6 +61,27 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
                 [sys.executable, "install.py"],
                 cwd=str(module_dir),
                 stdout=subprocess.DEVNULL if verbose == 0 else None,
+            )
+
+        if module_dir.joinpath("install.py").exists():
+            venv = workspace / ".venv"
+            if venv.exists():
+                python = (
+                    venv / "Scripts" / "python.exe"
+                    if os.name == "nt"
+                    else venv / "bin" / "python"
+                )
+            else:
+                python = sys.executable
+
+            if verbose > 0:
+                stdout = subprocess.DEVNULL
+            else:
+                stdout = subprocess.PIPE
+            subprocess.check_call(
+                [str(python), "install.py"],
+                cwd=module_dir,
+                stdout=stdout,
             )
 
 
@@ -138,8 +160,8 @@ def install(cpack: str | Path, workspace: str | Path = "workspace", verbose: int
         req_txt_file = pack_dir / "requirements.txt"
 
         install_comfyui(snapshot, workspace, verbose=verbose)
-        install_custom_modules(snapshot, workspace, verbose=verbose)
         install_dependencies(snapshot, str(req_txt_file), workspace, verbose=verbose)
+        install_custom_modules(snapshot, workspace, verbose=verbose)
 
         for f in (pack_dir / "input").glob("*"):
             shutil.copy(f, workspace / "input" / f.name)
