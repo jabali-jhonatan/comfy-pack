@@ -59,6 +59,12 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
         f.write(json.dumps(data, indent=2))
 
 
+def _normalize_to_dns(filename: str) -> str:
+    normalized = "".join(c if c.isalnum() else "-" for c in filename.lower())
+    normalized = normalized.strip("-").replace("--", "-")
+    return normalized[: 63 - 16]
+
+
 async def _get_models(data: dict, store_models: bool = False) -> list:
     print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
@@ -95,11 +101,17 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
         if store_models:
             import bentoml
 
-            model_tag = f'{Path(filename).stem}:{model_data["sha256"][:16]}'
+            model_tag = f'cpack-model:{model_data["sha256"][:16]}'
             try:
                 model = bentoml.models.get(model_tag)
             except bentoml.exceptions.NotFound:
-                with bentoml.models.create(model_tag, module="comfyui.models") as model:
+                with bentoml.models.create(
+                    model_tag,
+                    module="comfyui.models",
+                    labels={
+                        "filename": filename,
+                    },
+                ) as model:
                     shutil.copy(filename, Path(model.path) / Path(filename).name)
             model_data["model_tag"] = model_tag
         models.append(model_data)
