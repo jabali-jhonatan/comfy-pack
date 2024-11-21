@@ -170,11 +170,9 @@ async def _write_inputs(path: ZPath, data: dict) -> None:
                 continue
             file_path = os.path.join(root_path, file)
             relpath = os.path.relpath(file_path, input_dir)
-            try:
+            if isinstance(path, Path):
                 path.joinpath("input").mkdir(exist_ok=True)
-            except AttributeError:  # zipfile.Path does not have mkdir
-                pass
-            with path.joinpath(f"input/{relpath}").open("w") as f:
+            with path.joinpath(f"input/{relpath}").open("wb") as f:
                 with open(file_path, "rb") as input_file:
                     shutil.copyfileobj(input_file, f)
 
