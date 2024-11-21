@@ -29,12 +29,12 @@ app = fastapi.FastAPI()
 
 
 @lru_cache
-def _get_workspace() -> Path:
+def _get_workspace() -> Path:  # TODO: standardize bento run path in bentoml
     from bentoml._internal.configuration.containers import BentoMLContainer
 
     if bento := ComfyService.bento:
         wp = (
-            Path(BentoMLContainer.bentoml_home)
+            Path(BentoMLContainer.bentoml_home.get())
             / "run"
             / str(bento.tag).replace(":", "-")
             / "comfy_workspace"

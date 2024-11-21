@@ -21,6 +21,7 @@ from server import PromptServer
 ZPath = Union[Path, zipfile.Path]
 TEMP_FOLDER = Path(__file__).parent.parent / "temp"
 COMFY_PACK_DIR = Path(__file__).parent.parent / "src/comfy_pack"
+EXCLUDE_PACKAGES = ["bentoml", "onnxruntime"]  # TODO: standardize this
 
 
 async def _write_requirements(path: ZPath, extras: list[str] | None = None) -> None:
@@ -32,8 +33,7 @@ async def _write_requirements(path: ZPath, extras: list[str] | None = None) -> N
             "pip",
             "freeze",
             "--exclude-editable",
-            "--exclude",
-            "bentoml",
+            *[f"--exclude={p}" for p in EXCLUDE_PACKAGES],
             stdout=subprocess.PIPE,
         )
         stdout, _ = await proc.communicate()
