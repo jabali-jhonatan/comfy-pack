@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import shutil
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,7 +19,6 @@ BASE_DIR = Path(__file__).parent
 WORKFLOW_FILE = BASE_DIR / "workflow_api.json"
 COPY_THRESHOLD = 10 * 1024 * 1024
 INPUT_DIR = BASE_DIR / "input"
-comfy_workspace = Path.cwd() / "comfy_workspace"
 logger = logging.getLogger("bentoml.service")
 
 with open(WORKFLOW_FILE, "r") as f:
@@ -26,6 +26,23 @@ with open(WORKFLOW_FILE, "r") as f:
 
 InputModel = comfy_pack.generate_input_model(workflow)
 app = fastapi.FastAPI()
+
+
+@lru_cache
+def _get_workspace() -> Path:
+    from bentoml._internal.configuration.containers import BentoMLContainer
+
+    if bento := ComfyService.bento:
+        wp = (
+            Path(BentoMLContainer.bentoml_home)
+            / "run"
+            / str(bento.tag).replace(":", "-")
+            / "comfy_workspace"
+        )
+        wp.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        wp = Path.cwd() / "comfy_workspace"
+    return wp
 
 
 @app.get("/workflow.json")
@@ -38,7 +55,7 @@ def workflow_json():
 class ComfyService:
     def __init__(self):
         self.comfy_proc = comfy_pack.run.WorkflowRunner(
-            str(comfy_workspace), str(INPUT_DIR)
+            str(_get_workspace()), str(INPUT_DIR)
         )
         self.comfy_proc.start(verbose=int("BENTOML_DEBUG" in os.environ))
 
@@ -71,6 +88,7 @@ class ComfyService:
         from comfy_pack.package import install_comfyui, install_custom_modules
 
         verbose = int("BENTOML_DEBUG" in os.environ)
+        comfy_workspace = _get_workspace()
 
         with BASE_DIR.joinpath("snapshot.json").open("rb") as f:
             snapshot = json.load(f)
