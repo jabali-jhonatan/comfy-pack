@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
 import os
 import shutil
 import subprocess
@@ -66,15 +65,10 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
                 )
             else:
                 python = sys.executable
-
-            if verbose > 0:
-                stdout = subprocess.DEVNULL
-            else:
-                stdout = subprocess.PIPE
             subprocess.check_call(
                 [str(python), "install.py"],
                 cwd=module_dir,
-                stdout=stdout,
+                stdout=subprocess.DEVNULL if verbose == 0 else None,
             )
 
 

@@ -108,11 +108,9 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
                 with bentoml.models.create(
                     model_tag,
                     module="comfyui.models",
-                    labels={
-                        "filename": filename,
-                    },
+                    labels={"filename": filename},
                 ) as model:
-                    shutil.copy(filename, Path(model.path) / Path(filename).name)
+                    shutil.copy(filename, model.path_of("model.bin"))
             model_data["model_tag"] = model_tag
         models.append(model_data)
     return models

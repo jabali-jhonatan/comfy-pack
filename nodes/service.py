@@ -110,7 +110,7 @@ class ComfyService:
                 model_path = comfy_workspace / cast(str, model["filename"])
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 bento_model = bentoml.models.get(model_tag)
-                model_file = bento_model.path_of(model_path.name)
+                model_file = bento_model.path_of("model.bin")
                 logger.info("Copying %s to %s", model_file, model_path)
                 model_path.symlink_to(model_file)
             install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
