@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).parent
 WORKFLOW_FILE = BASE_DIR / "workflow_api.json"
 COPY_THRESHOLD = 10 * 1024 * 1024
 INPUT_DIR = BASE_DIR / "input"
-comfy_workspace = os.path.join(os.getcwd(), "comfy_workspace")
+comfy_workspace = Path.cwd() / "comfy_workspace"
 logger = logging.getLogger("bentoml.service")
 
 with open(WORKFLOW_FILE, "r") as f:
@@ -37,8 +37,7 @@ def workflow_json():
 class ComfyService:
     def __init__(self):
         self.comfy_proc = comfy_pack.run.WorkflowRunner(
-            comfy_workspace,
-            str(INPUT_DIR),
+            str(comfy_workspace), str(INPUT_DIR)
         )
         self.comfy_proc.start()
 
@@ -85,7 +84,7 @@ class ComfyService:
                     model["filename"],
                 )
                 continue
-            model_path = Path(comfy_workspace) / cast(str, model["filename"])
+            model_path = comfy_workspace / cast(str, model["filename"])
             model_path.parent.mkdir(parents=True, exist_ok=True)
             bento_model = bentoml.models.get(model_tag)
             model_file = bento_model.path_of(model_path.name)
