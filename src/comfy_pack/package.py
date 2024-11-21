@@ -55,13 +55,6 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
 
         commit_hash = module["commit_hash"]
         _clone_commit(url, commit_hash, module_dir, verbose=verbose)
-        if module_dir.joinpath("install.py").exists():
-            # XXX: This is a protocol proposed by ComfyUI-Manager
-            subprocess.check_call(
-                [sys.executable, "install.py"],
-                cwd=str(module_dir),
-                stdout=subprocess.DEVNULL if verbose == 0 else None,
-            )
 
         if module_dir.joinpath("install.py").exists():
             venv = workspace / ".venv"
