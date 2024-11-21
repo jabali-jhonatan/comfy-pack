@@ -126,6 +126,7 @@ function createInputModal() {
   return new Promise((resolve) => {
     const modal = document.createElement("div");
     modal.className = "cpack-modal";
+    modal.id = "input-modal";
 
     const title = document.createElement("div");
     title.textContent = "Package Worlflow";
@@ -181,6 +182,7 @@ function createInputModal() {
 function createDownloadModal() {
   const modal = document.createElement("div");
   modal.className = "cpack-modal";
+  modal.id = "download-modal";
 
   const title = document.createElement("div");
   title.textContent = "Packaging...";
@@ -219,6 +221,8 @@ function createDownloadModal() {
 }
 
 async function downloadPackage() {
+  if (document.getElementById("input-modal")) return;
+  if (document.getElementById("download-modal")) return;
   const filename = await createInputModal();
   if (!filename) return;
 
@@ -253,6 +257,8 @@ async function downloadPackage() {
 }
 
 async function buildBento() {
+  if (document.getElementById("build-modal")) return;
+  if (document.getElementById("building-modal")) return;
   const data = await createBuildModal();
   console.log(data);
   await createBuildingModal(data);
@@ -288,6 +294,7 @@ const buildForm = `
 
 function createBuildModal() {
   const modal = document.createElement("div");
+  modal.id = "build-modal";
   modal.className = "cpack-modal";
   modal.style.width = "400px";
 
@@ -373,6 +380,7 @@ async function createBuildingModal(data) {
   const modal = document.createElement("div");
   modal.className = "cpack-modal";
   modal.style.width = "400px";
+  modal.id = "building-modal";
 
   const title = document.createElement("div");
   title.textContent = "Building...";
