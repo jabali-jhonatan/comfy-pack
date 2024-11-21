@@ -204,13 +204,10 @@ function createDownloadModal() {
   };
 }
 
-async function downloadPackage(event) {
+async function downloadPackage() {
   const filename = await createInputModal();
   if (!filename) return;
 
-  const button = event.target;
-
-  button.disabled = true;
   const downloadModal = createDownloadModal();
 
   try {
@@ -238,10 +235,14 @@ async function downloadPackage(event) {
   } catch (error) {
     console.error("Package failed:", error);
     downloadModal.close();
-  } finally {
-    button.disabled = false;
   }
 }
+
+async function buildBento() {
+  const data = await createBuildModal();
+  console.log(data);
+  await createBuildingModal(data);
+};
 
 const buildForm = `
 <div class="cpack-form-item">
@@ -427,6 +428,34 @@ app.registerExtension({
     separator.style.margin = "20px 0";
     separator.style.width = "100%";
     menu.append(separator);
+
+    try {
+			// new style Manager buttons
+
+			// unload models button into new style Manager button
+			let cmGroup = new (await import("../../scripts/ui/components/buttonGroup.js")).ComfyButtonGroup(
+				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
+					icon: "package-variant-closed",
+					action: downloadPackage,
+					tooltip: "Package Workflow",
+					content: "Package",
+					classList: "comfyui-button comfyui-menu-mobile-collapse"
+				}).element,
+				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
+					icon: "package-up",
+					action: buildBento,
+					tooltip: "Build Workflow as Bento",
+          content: "Build Bento",
+          classList: "comfyui-button comfyui-menu-mobile-collapse primary"
+				}).element,
+			);
+
+			app.menu?.settingsGroup.element.before(cmGroup.element);
+		}
+		catch(exception) {
+			console.log('ComfyUI is outdated. New style menu based features are disabled.');
+		}
+
     const packButton = document.createElement("button");
     packButton.textContent = "Package";
     packButton.onclick = downloadPackage;
@@ -434,11 +463,7 @@ app.registerExtension({
 
     const buildButton = document.createElement("button");
     buildButton.textContent = "Build";
-    buildButton.onclick = async () => {
-      const data = await createBuildModal();
-      console.log(data);
-      await createBuildingModal(data);
-    };
+    buildButton.onclick = buildBento;
     menu.append(buildButton);
   }
 });
