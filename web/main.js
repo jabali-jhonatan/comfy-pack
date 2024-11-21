@@ -91,6 +91,20 @@ const style = `
   background: #333;
   padding: 10px;
 }
+
+.cpack-copyable {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.cpack-copyable > span {
+  border: 1px solid #ccc;
+  padding: 3px 10px;
+  border-radius: 3px;
+  background: #606060;
+}
 `
 
 function createModal(modal) {
@@ -405,8 +419,19 @@ async function createBuildingModal(data) {
     if (respData.error) {
       setError(respData.error);
     } else {
-      info.innerHTML = `<p><strong>${respData.bento}</strong></p>`;
       title.textContent = "Build Completed";
+      info.innerHTML = `<div class="cpack-copyable"><span style="flex:1">${respData.bento}</span><button class="cpack-btn"><i class="mdi mdi-content-copy" /></button></div>`;
+      const copyButton = info.querySelector("button");
+      copyButton.onclick = () => {
+        navigator.clipboard.writeText(respData.bento);
+        const icon = copyButton.querySelector("i");
+        icon.classList.remove("mdi-content-copy");
+        icon.classList.add("mdi-check");
+        setTimeout(() => {
+          icon.classList.remove("mdi-check");
+          icon.classList.add("mdi-content-copy");
+        }, 2000);
+      }
     }
   } catch(e) {
     setError(e.message);
