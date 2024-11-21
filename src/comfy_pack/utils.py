@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union
 
@@ -140,14 +141,14 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
                     f in options for f in ("min", "max", "round", "precision", "step")
                 ):  # must be number types
                     type_ = float if options.get("round", 1) < 1 else int
-                    field = (
-                        type_,
-                        Field(
-                            default=value,
-                            ge=options.get("min", PydanticUndefined),
-                            le=options.get("max", PydanticUndefined),
-                        ),
-                    )
+                    min_value = options.get("min", PydanticUndefined)
+                    max_value = options.get("max", PydanticUndefined)
+                    if type_ is int:
+                        if min_value < -sys.maxsize:
+                            min_value = PydanticUndefined
+                        if max_value > sys.maxsize:
+                            max_value = PydanticUndefined
+                    field = (type_, Field(default=value, ge=min_value, le=max_value))
                 else:
                     field = (type(value), Field(default=value))
         else:
