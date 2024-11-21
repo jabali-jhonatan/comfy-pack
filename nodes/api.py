@@ -226,7 +226,7 @@ async def build_bento(request):
         models = await _get_models(data, store_models=True)
 
         await _write_requirements(temp_dir_path, ["comfy-cli", "fastapi"])
-        await _write_snapshot(temp_dir_path, models)
+        await _write_snapshot(temp_dir_path, data, models)
         await _write_workflow(temp_dir_path, data)
         await _write_inputs(temp_dir_path, data)
         shutil.copy(
@@ -260,7 +260,7 @@ async def build_bento(request):
                 {
                     "result": "error",
                     "error": f"Build failed: {e.__class__.__name__}: {e}",
-                }
+                },
             )
 
     if data.get("push", False):
