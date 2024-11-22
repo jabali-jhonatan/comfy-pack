@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import copy
 import json
 import logging
@@ -25,7 +26,12 @@ def _probe_comfyui_server():
 
 
 class WorkflowRunner:
-    def __init__(self, workspace: str, input_dir: str | None = None) -> None:
+    def __init__(
+        self,
+        workspace: str,
+        input_dir: str | None = None,
+        port: int | None = None,
+    ) -> None:
         """
         Initialize the WorkflowRunner.
 
@@ -37,6 +43,7 @@ class WorkflowRunner:
         self.output_dir = Path(workspace) / "cli_run" / "output"
         self.input_dir = input_dir
         self.is_running = False
+        self.port = port if port else random.randint(58000, 58999)
 
     def start(self, verbose: int = 0) -> None:
         """
@@ -79,6 +86,8 @@ class WorkflowRunner:
             self.output_dir,
             "--temp-directory",
             self.temp_dir,
+            "--port",
+            str(self.port),
         ]
         if self.input_dir:
             command.extend(["--input-directory", self.input_dir])
@@ -171,6 +180,8 @@ class WorkflowRunner:
             "run",
             "--workflow",
             workflow_file_path.as_posix(),
+            "--port",
+            str(self.port),
             "--timeout",
             str(timeout),
             "--wait",

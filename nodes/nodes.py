@@ -268,7 +268,33 @@ class FileInput:
         return True
 
 
-class ValueInput:
+class TextInput:
+    COLOR = (142, 36, 170)
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "value": ("STRING", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = (anytype,)
+    RETURN_NAMES = ("value",)
+    FUNCTION = "identity"
+    CPACK_NODE = True
+    CATEGORY = "ComfyPack/input"
+
+    def identity(self, value):
+        return (value,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
+        return True
+
+
+class AnyInput:
     COLOR = (142, 36, 170)
 
     @classmethod
@@ -298,14 +324,16 @@ NODE_CLASS_MAPPINGS = {
     "CPackOutputFile": OutputFile,
     "CPackOutputImage": OutputImage,
     "CPackInputImage": ImageInput,
+    "CPackInputText": TextInput,
     "CPackInputFile": FileInput,
-    "CPackInputValue": ValueInput,
+    "CPackInputAny": AnyInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "CPackInputImage": "Image Input",
+    "CPackInputText": "Text Input",
     "CPackInputFile": "File Input",
+    "CPackInputAny": "Any Input",
     "CPackOutputImage": "Image Output",
     "CPackOutputFile": "File Output",
-    "CPackInputValue": "Plain Value Input",
 }

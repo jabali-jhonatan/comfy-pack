@@ -51,7 +51,8 @@ def workflow_json():
 class ComfyService:
     def __init__(self):
         self.comfy_proc = comfy_pack.run.WorkflowRunner(
-            str(_get_workspace()), str(INPUT_DIR)
+            str(_get_workspace()),
+            str(INPUT_DIR),
         )
         self.comfy_proc.start(verbose=int("BENTOML_DEBUG" in os.environ))
 

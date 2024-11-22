@@ -32,7 +32,7 @@ function mimicNode(node, target, slot) {
 
 app.registerExtension({
 	name: "Comfy.DynamicInput",
-  extensionNodes: ["CPackInputValue", "CPackInputFile"],
+  extensionNodes: ["CPackInputAny", "CPackInputFile"],
 
 	async beforeRegisterNodeDef(nodeType, nodeData) {
     if (!this.extensionNodes.includes(nodeData.name)) return;
