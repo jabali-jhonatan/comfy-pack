@@ -64,9 +64,9 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
                     else venv / "bin" / "python"
                 )
             else:
-                python = sys.executable
+                python = Path(sys.executable)
             subprocess.check_call(
-                [str(python), "install.py"],
+                [str(python.absolute()), "install.py"],
                 cwd=module_dir,
                 stdout=subprocess.DEVNULL if verbose == 0 else None,
             )
