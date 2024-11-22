@@ -95,11 +95,15 @@ def _parse_workflow(workflow: dict) -> tuple[dict[str, Any], dict[str, Any]]:
     for id, node in workflow.items():
         node["id"] = id
         if node["class_type"].startswith("CPackInput"):
+            if not node.get("inputs"):
+                continue
             name = _get_node_identifier(node, dep_map)
             if name in inputs:
                 name = f"{name}_{id}"
             inputs[name] = node
         elif node["class_type"].startswith("CPackOutput"):
+            if not node.get("inputs"):
+                continue
             name = _get_node_identifier(node)
             if name in inputs:
                 name = f"{name}_{id}"
