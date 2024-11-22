@@ -15,10 +15,10 @@ from .utils import populate_workflow, retrieve_workflow_outputs
 logger = logging.getLogger(__name__)
 
 
-def _probe_comfyui_server():
+def _probe_comfyui_server(port: int) -> None:
     from urllib import parse, request
 
-    url = "http://127.0.0.1:8188/api/customnode/getmappings"
+    url = f"http://127.0.0.1:{port}/api/customnode/getmappings"
     params = {"mode": "nickname"}
     full_url = f"{url}?{parse.urlencode(params)}"
     req = request.Request(full_url)
@@ -93,7 +93,7 @@ class WorkflowRunner:
             command.extend(["--input-directory", self.input_dir])
         if subprocess.run(command, check=True, stdout=stdout):
             self.is_running = True
-            _probe_comfyui_server()
+            _probe_comfyui_server(self.port)
             logger.info("Successfully started ComfyUI in the background")
         else:
             logger.error("Failed to start ComfyUI in the background")
