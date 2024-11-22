@@ -168,6 +168,9 @@ async def _write_workflow(path: ZPath, data: dict) -> None:
 
 async def _write_inputs(path: ZPath, data: dict) -> None:
     print("Package => Writing inputs")
+    if isinstance(path, Path):
+        path.joinpath("input").mkdir(exist_ok=True)
+
     input_dir = folder_paths.get_input_directory()
 
     used_inputs = set()
@@ -175,16 +178,16 @@ async def _write_inputs(path: ZPath, data: dict) -> None:
         for _, v in node["inputs"].items():
             if isinstance(v, str):
                 used_inputs.add(v)
-    for root_path, _, files in os.walk(input_dir):
-        for file in files:
-            if file not in used_inputs and root_path not in used_inputs:
-                continue
-            file_path = os.path.join(root_path, file)
-            relpath = os.path.relpath(file_path, input_dir)
+
+    src_root = Path(input_dir).absolute()
+    for src in src_root.glob("**/*"):
+        rel = src.relative_to(src_root)
+        if src.is_dir():
             if isinstance(path, Path):
-                path.joinpath("input").mkdir(exist_ok=True)
-            with path.joinpath(f"input/{relpath}").open("wb") as f:
-                with open(file_path, "rb") as input_file:
+                path.joinpath('input').joinpath(rel).mkdir(parents=True, exist_ok=True)
+        if src.is_file():
+            with open(path.joinpath('input').joinpath(rel), "wb") as f:
+                with open(src, "rb") as input_file:
                     shutil.copyfileobj(input_file, f)
 
 
@@ -241,7 +244,8 @@ async def build_bento(request):
         await _write_workflow(temp_dir_path, data)
         await _write_inputs(temp_dir_path, data)
         shutil.copy(
-            Path(__file__).with_name("service.py"), temp_dir_path / "service.py"
+            Path(__file__).with_name("service.py"),
+            temp_dir_path / "service.py",
         )
 
         # create a bento

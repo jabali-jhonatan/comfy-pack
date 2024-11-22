@@ -110,5 +110,12 @@ class ComfyService:
                 model_file = bento_model.path_of("model.bin")
                 logger.info("Copying %s to %s", model_file, model_path)
                 model_path.symlink_to(model_file)
+
+            for f in INPUT_DIR.glob("*"):
+                if f.is_file():
+                    shutil.copy(f, comfy_workspace / "input" / f.name)
+                elif f.is_dir():
+                    shutil.copytree(f, comfy_workspace / "input" / f.name)
+
             install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
             comfy_workspace.joinpath(".DONE").touch()
