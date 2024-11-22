@@ -107,7 +107,6 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
             except bentoml.exceptions.NotFound:
                 with bentoml.models.create(
                     model_tag,
-                    module="comfyui.models",
                     labels={"filename": filename},
                 ) as model:
                     shutil.copy(filename, model.path_of("model.bin"))
