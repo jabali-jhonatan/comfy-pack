@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import sys
 import shutil
 
 import folder_paths
@@ -304,8 +305,8 @@ class IntInput:
                 "value": ("INT", {"default": 0}),
             },
             "optional": {
-                "min": ("INT", {"default": None}),
-                "max": ("INT", {"default": None}),
+                "min": ("INT", {"default": -sys.maxsize}),
+                "max": ("INT", {"default": sys.maxsize}),
             },
         }
 
