@@ -315,7 +315,7 @@ class IntInput:
     CPACK_NODE = True
     CATEGORY = "ComfyPack/input"
 
-    def identity(self, value):
+    def identity(self, value, min=None, max=None):
         return (value,)
 
     @classmethod
