@@ -49,13 +49,22 @@ def _get_node_identifier(node, dep_map=None) -> str:
     """
     Get the input name from the node
     """
-    title = node["_meta"]["title"]
+    if "_meta" in node and "title" in node["_meta"]:
+        title = node["_meta"]["title"]
+    else:
+        title = ""
     if title.isidentifier():
         return title
+
     nid = node["id"]
     if dep_map and (nid, 0) in dep_map:
         _, input_name = dep_map[(nid, 0)]
         return _normalize_to_identifier(input_name)
+
+    if not title:
+        klass = node.get("class_type", "cpack_input")
+        name = klass.lstrip("CPack").lstrip("Input")
+        return _normalize_to_identifier(name)
 
     return _normalize_to_identifier(title)
 
