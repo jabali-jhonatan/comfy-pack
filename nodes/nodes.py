@@ -364,7 +364,7 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "CPackInputImage": "Image Input",
-    "CPackInputText": "Text Input",
+    "CPackInputString": "String Input",
     "CPackInputInt": "Int Input",
     "CPackInputFile": "File Input",
     "CPackInputAny": "Any Input",
