@@ -171,4 +171,7 @@ def install(cpack: str | Path, workspace: str | Path = "workspace", verbose: int
         install_custom_modules(snapshot, workspace, verbose=verbose)
 
         for f in (pack_dir / "input").glob("*"):
-            shutil.copy(f, workspace / "input" / f.name)
+            if f.is_file():
+                shutil.copy(f, workspace / "input" / f.name)
+            elif f.is_dir():
+                shutil.copytree(f, workspace / "input" / f.name)
