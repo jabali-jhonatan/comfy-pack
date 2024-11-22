@@ -172,10 +172,9 @@ async def _write_inputs(path: ZPath, data: dict) -> None:
         for _, v in node["inputs"].items():
             if isinstance(v, str):
                 used_inputs.add(v)
-
     for root_path, _, files in os.walk(input_dir):
         for file in files:
-            if file not in used_inputs:
+            if file not in used_inputs and root_path not in used_inputs:
                 continue
             file_path = os.path.join(root_path, file)
             relpath = os.path.relpath(file_path, input_dir)
