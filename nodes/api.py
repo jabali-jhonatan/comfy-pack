@@ -92,12 +92,15 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
         relpath_path = Path(relpath)
 
         with open(filename, "rb") as model:
-            model_data = {
-                "filename": relpath,
-                "sha256": hashlib.sha256(model.read()).hexdigest(),
-                "explicit": relpath_path.name in used_inputs,
-                "size": os.path.getsize(filename),
-            }
+            hasher = hashlib.sha256()
+            for chunk in iter(lambda: model.read(4096), b""):
+                hasher.update(chunk)
+        model_data = {
+            "filename": relpath,
+            "sha256": hasher.hexdigest(),
+            "explicit": relpath_path.name in used_inputs,
+            "size": os.path.getsize(filename),
+        }
         if store_models:
             import bentoml
 

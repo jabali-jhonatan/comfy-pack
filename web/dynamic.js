@@ -3,14 +3,26 @@ import { app } from "../../scripts/app.js";
 function mimicNode(node, target, slot) {
   const getWidget = (widget) => {
     if (typeof widget.origType === "undefined") return widget;
-    const newWidget = Object.assign({}, widget);
-    for (const key in widget) {
-      if (key.startsWith("orig") || key === "computeSize" || key === "serializeValue") {
-        delete newWidget[key];
+    const newWidget = new Proxy(widget, {
+      has(target, prop) {
+        return prop in target && prop !== "origType" && prop !== "computeSize";
+      },
+      get(target, prop) {
+        if (prop.startsWith("orig") || prop === "computeSize") {
+          return undefined;
+        } else if (prop === "type") {
+          return target.origType;
+        } else if (prop === "name") {
+          return inputName;
+        } else {
+          return target[prop];
+        }
+      },
+      set(target, prop, value) {
+        target[prop] = value;
+        return true;
       }
-    }
-    newWidget.type = widget.origType;
-    newWidget.name = inputName;
+    });
     return newWidget;
   }
   const input = target.inputs[slot];
