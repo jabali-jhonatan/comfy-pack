@@ -268,7 +268,7 @@ class FileInput:
         return True
 
 
-class TextInput:
+class StringInput:
     COLOR = (142, 36, 170)
 
     @classmethod
@@ -279,7 +279,7 @@ class TextInput:
             }
         }
 
-    RETURN_TYPES = (anytype,)
+    RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("value",)
     FUNCTION = "identity"
     CPACK_NODE = True
@@ -290,6 +290,38 @@ class TextInput:
 
     @classmethod
     def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
+        return True
+
+
+class IntInput:
+    COLOR = (142, 36, 170)
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "value": ("INT", {"default": 0}),
+            },
+            "optional": {
+                "min": ("INT", {"default": None}),
+                "max": ("INT", {"default": None}),
+            },
+        }
+
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("value",)
+    FUNCTION = "identity"
+    CPACK_NODE = True
+    CATEGORY = "ComfyPack/input"
+
+    def identity(self, value):
+        return (value,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, value, min=None, max=None):
+        if min is not None and max is not None and min > max:
+            return f"Value must be greater than or equal to {min}"
         set_bentoml_output([(value,)])
         return True
 
@@ -324,7 +356,8 @@ NODE_CLASS_MAPPINGS = {
     "CPackOutputFile": OutputFile,
     "CPackOutputImage": OutputImage,
     "CPackInputImage": ImageInput,
-    "CPackInputText": TextInput,
+    "CPackInputString": StringInput,
+    "CPackInputInt": IntInput,
     "CPackInputFile": FileInput,
     "CPackInputAny": AnyInput,
 }
@@ -332,6 +365,7 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "CPackInputImage": "Image Input",
     "CPackInputText": "Text Input",
+    "CPackInputInt": "Int Input",
     "CPackInputFile": "File Input",
     "CPackInputAny": "Any Input",
     "CPackOutputImage": "Image Output",

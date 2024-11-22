@@ -142,9 +142,12 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
         class_type = node["class_type"]
         if class_type in CPACK_PATH_INPUT_NODES:
             field = (Path, Field())
-        elif class_type == "CPackInputText":
+        elif class_type == "CPackInputString":
             value = _get_node_value(node)
             field = (str, Field(default=value))
+        elif class_type == "CPackInputInt":
+            value = _get_node_value(node)
+            field = (int, Field(default=value))
         elif class_type == "CPackInputAny":
             options = node.get("_meta", {}).get("options")
             value = _get_node_value(node)
