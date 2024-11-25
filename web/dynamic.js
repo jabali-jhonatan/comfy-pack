@@ -77,9 +77,12 @@ app.registerExtension({
       Object.entries(output).forEach(([id, nodeData]) => {
         if (!nodeData.class_type.startsWith("CPackInput")) return;
         const node = graph.getNodeById(parseInt(id));
+        if (!nodeData["_meta"]) {
+          nodeData["_meta"] = { title: node.title };
+        }
         if (node.widgets.length === 0) return;
         const widget = node.widgets[0];
-        nodeData["_meta"] = Object.assign({}, nodeData["_meta"] || { title: node.title }, { options: widget.options });
+        nodeData["_meta"] = { ...nodeData["_meta"], options: widget.options };
       });
       return { workflow, output };
     };
