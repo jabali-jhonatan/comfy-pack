@@ -59,10 +59,40 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
         f.write(json.dumps(data, indent=2))
 
 
-def _normalize_to_dns(filename: str) -> str:
-    normalized = "".join(c if c.isalnum() else "-" for c in filename.lower())
-    normalized = normalized.strip("-").replace("--", "-")
-    return normalized[: 63 - 16]
+def _get_file_info_key(file_path: Path) -> tuple:
+    # use mtime, size to determine if a file has changed
+    return (file_path.stat().st_mtime, file_path.stat().st_size)
+
+
+def _get_hash(file_path: Path) -> str:
+    cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache.json"
+    try:
+        with cpack_hash_cache_file.open("r") as f:
+            cache = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        cache = {}
+
+    mtime, size = _get_file_info_key(file_path)
+    if file_path.absolute().as_posix() in cache:
+        if (
+            cache[file_path.absolute().as_posix()]["mtime"] == mtime
+            and cache[file_path.absolute().as_posix()]["size"] == size
+        ):
+            return cache[file_path.absolute().as_posix()]["sha256"]
+
+    with cpack_hash_cache_file.open("w") as f:
+        hasher = hashlib.sha256()
+        with open(file_path, "rb") as file:
+            for chunk in iter(lambda: file.read(4096), b""):
+                hasher.update(chunk)
+        sha = hasher.hexdigest()
+        cache[file_path.absolute().as_posix()] = {
+            "sha256": sha,
+            "mtime": mtime,
+            "size": size,
+        }
+        json.dump(cache, f)
+        return sha
 
 
 async def _get_models(data: dict, store_models: bool = False) -> list:
@@ -91,13 +121,9 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
 
         relpath_path = Path(relpath)
 
-        hasher = hashlib.sha256()
-        with open(filename, "rb") as model:
-            for chunk in iter(lambda: model.read(4096), b""):
-                hasher.update(chunk)
         model_data = {
             "filename": relpath,
-            "sha256": hasher.hexdigest(),
+            "sha256": _get_hash(Path(filename)),
             "explicit": relpath_path.name in used_inputs,
             "size": os.path.getsize(filename),
         }
@@ -184,9 +210,9 @@ async def _write_inputs(path: ZPath, data: dict) -> None:
         rel = src.relative_to(src_root)
         if src.is_dir():
             if isinstance(path, Path):
-                path.joinpath('input').joinpath(rel).mkdir(parents=True, exist_ok=True)
+                path.joinpath("input").joinpath(rel).mkdir(parents=True, exist_ok=True)
         if src.is_file():
-            with open(path.joinpath('input').joinpath(rel), "wb") as f:
+            with path.joinpath("input").joinpath(rel).open("wb") as f:
                 with open(src, "rb") as input_file:
                     shutil.copyfileobj(input_file, f)
 
