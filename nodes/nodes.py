@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import sys
 import shutil
 
 import folder_paths
@@ -268,7 +269,65 @@ class FileInput:
         return True
 
 
-class ValueInput:
+class StringInput:
+    COLOR = (142, 36, 170)
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "value": ("STRING", {"default": ""}),
+            }
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("value",)
+    FUNCTION = "identity"
+    CPACK_NODE = True
+    CATEGORY = "ComfyPack/input"
+
+    def identity(self, value):
+        return (value,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, value):
+        set_bentoml_output([(value,)])
+        return True
+
+
+class IntInput:
+    COLOR = (142, 36, 170)
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "value": ("INT", {"default": 0}),
+            },
+            "optional": {
+                "min": ("INT", {"default": -sys.maxsize}),
+                "max": ("INT", {"default": sys.maxsize}),
+            },
+        }
+
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("value",)
+    FUNCTION = "identity"
+    CPACK_NODE = True
+    CATEGORY = "ComfyPack/input"
+
+    def identity(self, value, min=None, max=None):
+        return (value,)
+
+    @classmethod
+    def VALIDATE_INPUTS(s, value, min=None, max=None):
+        if min is not None and max is not None and min > max:
+            return f"Value must be greater than or equal to {min}"
+        set_bentoml_output([(value,)])
+        return True
+
+
+class AnyInput:
     COLOR = (142, 36, 170)
 
     @classmethod
@@ -298,14 +357,18 @@ NODE_CLASS_MAPPINGS = {
     "CPackOutputFile": OutputFile,
     "CPackOutputImage": OutputImage,
     "CPackInputImage": ImageInput,
+    "CPackInputString": StringInput,
+    "CPackInputInt": IntInput,
     "CPackInputFile": FileInput,
-    "CPackInputValue": ValueInput,
+    "CPackInputAny": AnyInput,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "CPackInputImage": "Image Input",
+    "CPackInputString": "String Input",
+    "CPackInputInt": "Int Input",
     "CPackInputFile": "File Input",
+    "CPackInputAny": "Any Input",
     "CPackOutputImage": "Image Output",
     "CPackOutputFile": "File Output",
-    "CPackInputValue": "Plain Value Input",
 }

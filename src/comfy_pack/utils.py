@@ -142,7 +142,17 @@ def generate_input_model(workflow: dict) -> type[BaseModel]:
         class_type = node["class_type"]
         if class_type in CPACK_PATH_INPUT_NODES:
             field = (Path, Field())
-        elif class_type == "CPackInputValue":
+        elif class_type == "CPackInputString":
+            value = _get_node_value(node)
+            field = (str, Field(default=value))
+        elif class_type == "CPackInputInt":
+            value, min, max = tuple(node["inputs"].values())
+            if min == -sys.maxsize:
+                min = PydanticUndefined
+            if max == sys.maxsize:
+                max = PydanticUndefined
+            field = (int, Field(default=value, ge=min, le=max))
+        elif class_type == "CPackInputAny":
             options = node.get("_meta", {}).get("options")
             value = _get_node_value(node)
             if not options:

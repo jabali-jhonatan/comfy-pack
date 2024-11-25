@@ -42,7 +42,16 @@ def _clone_commit(url: str, commit: str, dir: Path, verbose: int = 0):
 def install_comfyui(snapshot, workspace: Path, verbose: int = 0):
     print("Installing ComfyUI")
     comfyui_commit = snapshot["comfyui"]
+    if workspace.exists():
+        if workspace.joinpath(".DONE").exists():
+            commit = (workspace / ".DONE").read_text()
+            if commit.strip() == comfyui_commit:
+                print("ComfyUI is already installed")
+                return
+        shutil.rmtree(workspace)
     _clone_commit(COMFYUI_REPO, comfyui_commit, workspace, verbose=verbose)
+    with open(workspace / ".DONE", "w") as f:
+        f.write(comfyui_commit)
 
 
 def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
@@ -51,6 +60,14 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
         url = module["url"]
         directory = url.split("/")[-1].split(".")[0]
         module_dir = workspace / "custom_nodes" / directory
+
+        if module_dir.exists():
+            if module_dir.joinpath(".DONE").exists():
+                commit = (module_dir / ".DONE").read_text()
+                if commit.strip() == module["commit_hash"]:
+                    print(f"{directory} is already installed")
+                    continue
+            shutil.rmtree(module_dir)
 
         commit_hash = module["commit_hash"]
         _clone_commit(url, commit_hash, module_dir, verbose=verbose)
@@ -64,12 +81,15 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
                     else venv / "bin" / "python"
                 )
             else:
-                python = sys.executable
+                python = Path(sys.executable)
             subprocess.check_call(
-                [str(python), "install.py"],
+                [str(python.absolute()), "install.py"],
                 cwd=module_dir,
                 stdout=subprocess.DEVNULL if verbose == 0 else None,
             )
+
+        with open(module_dir / ".DONE", "w") as f:
+            f.write(commit_hash)
 
 
 def install_dependencies(
@@ -151,4 +171,7 @@ def install(cpack: str | Path, workspace: str | Path = "workspace", verbose: int
         install_custom_modules(snapshot, workspace, verbose=verbose)
 
         for f in (pack_dir / "input").glob("*"):
-            shutil.copy(f, workspace / "input" / f.name)
+            if f.is_file():
+                shutil.copy(f, workspace / "input" / f.name)
+            elif f.is_dir():
+                shutil.copytree(f, workspace / "input" / f.name)

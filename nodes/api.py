@@ -59,10 +59,40 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
         f.write(json.dumps(data, indent=2))
 
 
-def _normalize_to_dns(filename: str) -> str:
-    normalized = "".join(c if c.isalnum() else "-" for c in filename.lower())
-    normalized = normalized.strip("-").replace("--", "-")
-    return normalized[: 63 - 16]
+def _get_file_info_key(file_path: Path) -> tuple:
+    # use mtime, size to determine if a file has changed
+    return (file_path.stat().st_mtime, file_path.stat().st_size)
+
+
+def _get_hash(file_path: Path) -> str:
+    cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache.json"
+    try:
+        with cpack_hash_cache_file.open("r") as f:
+            cache = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        cache = {}
+
+    mtime, size = _get_file_info_key(file_path)
+    if file_path.absolute().as_posix() in cache:
+        if (
+            cache[file_path.absolute().as_posix()]["mtime"] == mtime
+            and cache[file_path.absolute().as_posix()]["size"] == size
+        ):
+            return cache[file_path.absolute().as_posix()]["sha256"]
+
+    with cpack_hash_cache_file.open("w") as f:
+        hasher = hashlib.sha256()
+        with open(file_path, "rb") as file:
+            for chunk in iter(lambda: file.read(4096), b""):
+                hasher.update(chunk)
+        sha = hasher.hexdigest()
+        cache[file_path.absolute().as_posix()] = {
+            "sha256": sha,
+            "mtime": mtime,
+            "size": size,
+        }
+        json.dump(cache, f)
+        return sha
 
 
 async def _get_models(data: dict, store_models: bool = False) -> list:
@@ -91,13 +121,12 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
 
         relpath_path = Path(relpath)
 
-        with open(filename, "rb") as model:
-            model_data = {
-                "filename": relpath,
-                "sha256": hashlib.sha256(model.read()).hexdigest(),
-                "explicit": relpath_path.name in used_inputs,
-                "size": os.path.getsize(filename),
-            }
+        model_data = {
+            "filename": relpath,
+            "sha256": _get_hash(Path(filename)),
+            "explicit": relpath_path.name in used_inputs,
+            "size": os.path.getsize(filename),
+        }
         if store_models:
             import bentoml
 
@@ -165,6 +194,9 @@ async def _write_workflow(path: ZPath, data: dict) -> None:
 
 async def _write_inputs(path: ZPath, data: dict) -> None:
     print("Package => Writing inputs")
+    if isinstance(path, Path):
+        path.joinpath("input").mkdir(exist_ok=True)
+
     input_dir = folder_paths.get_input_directory()
 
     used_inputs = set()
@@ -173,16 +205,15 @@ async def _write_inputs(path: ZPath, data: dict) -> None:
             if isinstance(v, str):
                 used_inputs.add(v)
 
-    for root_path, _, files in os.walk(input_dir):
-        for file in files:
-            if file not in used_inputs:
-                continue
-            file_path = os.path.join(root_path, file)
-            relpath = os.path.relpath(file_path, input_dir)
+    src_root = Path(input_dir).absolute()
+    for src in src_root.glob("**/*"):
+        rel = src.relative_to(src_root)
+        if src.is_dir():
             if isinstance(path, Path):
-                path.joinpath("input").mkdir(exist_ok=True)
-            with path.joinpath(f"input/{relpath}").open("wb") as f:
-                with open(file_path, "rb") as input_file:
+                path.joinpath("input").joinpath(rel).mkdir(parents=True, exist_ok=True)
+        if src.is_file():
+            with path.joinpath("input").joinpath(rel).open("wb") as f:
+                with open(src, "rb") as input_file:
                     shutil.copyfileobj(input_file, f)
 
 
@@ -239,7 +270,8 @@ async def build_bento(request):
         await _write_workflow(temp_dir_path, data)
         await _write_inputs(temp_dir_path, data)
         shutil.copy(
-            Path(__file__).with_name("service.py"), temp_dir_path / "service.py"
+            Path(__file__).with_name("service.py"),
+            temp_dir_path / "service.py",
         )
 
         # create a bento
