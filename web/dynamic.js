@@ -67,7 +67,7 @@ app.registerExtension({
         const node = graph.getNodeById(parseInt(id));
         if (node.widgets.length === 0) return;
         const widget = node.widgets[0];
-        nodeData["_meta"] = Object.assign({}, nodeData["_meta"] || {}, { options: widget.options });
+        nodeData["_meta"] = Object.assign({}, nodeData["_meta"] || { title: node.title }, { options: widget.options });
       });
       return { workflow, output };
     };
