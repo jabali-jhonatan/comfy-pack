@@ -461,6 +461,15 @@ app.registerExtension({
     separator.style.margin = "20px 0";
     separator.style.width = "100%";
     menu.append(separator);
+    const packButton = document.createElement("button");
+    packButton.textContent = "Package";
+    packButton.onclick = downloadPackage;
+    menu.append(packButton);
+
+    const buildButton = document.createElement("button");
+    buildButton.textContent = "Build";
+    buildButton.onclick = buildBento;
+    menu.append(buildButton);
 
     try {
 			// new style Manager buttons
@@ -488,15 +497,5 @@ app.registerExtension({
 		catch(exception) {
 			console.log('ComfyUI is outdated. New style menu based features are disabled.');
 		}
-
-    const packButton = document.createElement("button");
-    packButton.textContent = "Package";
-    packButton.onclick = downloadPackage;
-    menu.append(packButton);
-
-    const buildButton = document.createElement("button");
-    buildButton.textContent = "Build";
-    buildButton.onclick = buildBento;
-    menu.append(buildButton);
   }
 });
