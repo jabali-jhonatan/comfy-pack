@@ -44,10 +44,10 @@ function mimicNode(node, target, slot) {
 
 app.registerExtension({
 	name: "Comfy.DynamicInput",
-  extensionNodes: ["CPackInputAny", "CPackInputFile"],
+  dynamicNodes: ["CPackInputAny", "CPackInputFile"],
 
 	async beforeRegisterNodeDef(nodeType, nodeData) {
-    if (!this.extensionNodes.includes(nodeData.name)) return;
+    if (!this.dynamicNodes.includes(nodeData.name)) return;
 
     nodeType.prototype.onConnectOutput = function () {
       if (this.outputs[0].links?.length > 0) return false;
@@ -61,7 +61,7 @@ app.registerExtension({
 
   async setup(app) {
     app.graph.nodes.forEach((node) => {
-      if (!this.extensionNodes.includes(node.type)) return;
+      if (!this.dynamicNodes.includes(node.type)) return;
       if (node.outputs.length > 0 && node.outputs[0].links.length > 0) {
         const link = node.graph.links[node.outputs[0].links[0]];
         mimicNode(node, app.graph.getNodeById(link.target_id), link.target_slot);
@@ -75,7 +75,7 @@ app.registerExtension({
     app.graphToPrompt = async function(graph = app.graph, clean = true) {
       const { workflow, output } = await originalToPrompt(graph, clean);
       Object.entries(output).forEach(([id, nodeData]) => {
-        if (!self.extensionNodes.includes(nodeData.class_type)) return;
+        if (!nodeData.class_type.startsWith("CPackInput")) return;
         const node = graph.getNodeById(parseInt(id));
         if (node.widgets.length === 0) return;
         const widget = node.widgets[0];
