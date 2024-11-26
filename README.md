@@ -20,49 +20,40 @@ pip install comfy-pack
 2. Design your workflow with parameter nodes
 3. Click "Package" button to create `.cpack.zip`
 
-### Deploy as Service
+### Restore to a ComfyUI project
 ```bash
-# Restore environment from pack
-comfy-pack restore workflow.cpack.zip
-
-# Run as REST service
-comfy-pack serve workflow.cpack.zip
+# Restore environment from pack, will install everything needed except the models.
+comfy-pack restore workflow.cpack.zip --dir ./
 ```
 
 ### Run Inference
 ```bash
-# CLI inference
-comfy-pack run workflow.cpack.zip \
-  --input_image path/to/img.png \
-  --prompt "your prompt" \
-  --seed 42
+# Get the workflow input spec
+comfy-pack info workflow.cpack.zip
 
-# REST API call
-curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"input_image": "base64...", "prompt": "your prompt", "seed": 42}'
+# Run
+comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4 
 ```
+
+### Online REST service
+under development
 
 ## Parameter Nodes
 
 ComfyPack provides custom nodes for standardizing inputs:
-- ImageParameter
-- TextParameter  
-- NumberParameter
-- SelectParameter
+- ImageInput
+- StringInput  
+- IntInput
+- AnyInput
+- ImageOutput
+- FileOutput
 - ...
 
 These nodes help define clear interfaces for your workflow.
 
 ## Docker Support
+Under development
 
-```bash
-# Build image with pack
-docker build -t myapp --build-arg PACK=workflow.cpack.zip .
-
-# Run container
-docker run -p 8000:8000 myapp
-```
 
 ## Examples
 
@@ -79,4 +70,4 @@ MIT License
 - Issues & Feature Requests: GitHub Issues
 - Questions & Discussion: Discord Server
 
-For detailed documentation, visit [docs.comfypack.ai](https://docs.comfypack.ai)
+Detailed documentation: under development
