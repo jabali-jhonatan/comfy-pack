@@ -67,6 +67,7 @@ def _get_file_info_key(file_path: Path) -> tuple:
 
 
 def _get_hash(file_path: Path) -> str:
+    TEMP_FOLDER.mkdir(exist_ok=True)
     cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache.json"
     try:
         with cpack_hash_cache_file.open("r") as f:
