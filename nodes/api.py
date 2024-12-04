@@ -31,6 +31,8 @@ async def _write_requirements(path: ZPath, extras: list[str] | None = None) -> N
             sys.executable,
             "-m",
             "pip",
+            "list",
+            "--format",
             "freeze",
             "--exclude-editable",
             *[f"--exclude={p}" for p in EXCLUDE_PACKAGES],
