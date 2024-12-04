@@ -47,7 +47,7 @@ def workflow_json():
 
 
 @bentoml.mount_asgi_app(app, path="/comfy")
-@bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2})
+@bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2}, resources={"gpu": 1})
 class ComfyService:
     def __init__(self):
         self.comfy_proc = comfy_pack.run.WorkflowRunner(

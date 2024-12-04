@@ -138,8 +138,7 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
                 model = bentoml.models.get(model_tag)
             except bentoml.exceptions.NotFound:
                 with bentoml.models.create(
-                    model_tag,
-                    labels={"filename": filename},
+                    model_tag, labels={"filename": relpath}
                 ) as model:
                     shutil.copy(filename, model.path_of("model.bin"))
             model_data["model_tag"] = model_tag
