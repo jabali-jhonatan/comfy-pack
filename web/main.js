@@ -286,7 +286,7 @@ const buildForm = `
   </div>
   <div class="cpack-form-item">
     <label for="bentoName">BentoCloud Endpoint</label>
-    <input type="text" class="cpack-input" name="endpoint" />
+    <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" />
   </div>
   <p style="font-size: 0.85em;">Leave these empty to use the credentials stored in local machine</p>
 </div>
