@@ -264,7 +264,7 @@ async function serveBento() {
   modal.style.width = "400px";
 
   const title = document.createElement("div");
-  title.textContent = "Development Server";
+  title.textContent = "Serve Workflow as REST API";
   title.className = "cpack-title";
 
   const form = document.createElement("form");
@@ -386,7 +386,7 @@ function createBuildModal() {
   modal.style.width = "400px";
 
   const title = document.createElement("div");
-  title.textContent = "Build Workflow As Bento";
+  title.textContent = "Deploy Workflow to Cloud";
   title.className = "cpack-title";
 
   const form = document.createElement("form");
@@ -462,7 +462,7 @@ async function createServeStatusModal(url) {
   modal.style.width = "400px";
 
   const title = document.createElement("div");
-  title.textContent = "Development Server";
+  title.textContent = "Serve Workflow as REST API";
   title.className = "cpack-title";
 
   const info = document.createElement("div");
@@ -644,24 +644,24 @@ app.registerExtension({
 
 			// unload models button into new style Manager button
 			let cmGroup = new (await import("../../scripts/ui/components/buttonGroup.js")).ComfyButtonGroup(
-        new(await import("../../scripts/ui/components/button.js")).ComfyButton({
-          icon: "play",
-          action: serveBento,
-          tooltip: "Start a development server",
-          content: "Serve",
-          classList: "comfyui-button comfyui-menu-mobile-collapse primary"
-        }).element,
+			  new(await import("../../scripts/ui/components/button.js")).ComfyButton({
+			    icon: "api",
+			    action: serveBento,
+			    tooltip: "Comfy-Pack",
+			    content: "Serve",
+			    classList: "comfyui-button comfyui-menu-mobile-collapse primary"
+			  }).element,
 				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
 					icon: "package-variant-closed",
 					action: downloadPackage,
-					tooltip: "Package Workflow",
+					tooltip: "Comfy-Pack",
 					content: "Package",
 					classList: "comfyui-button comfyui-menu-mobile-collapse"
 				}).element,
 				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
-					icon: "package-up",
+					icon: "cloud-upload",
 					action: buildBento,
-					tooltip: "Deploy API service to BentoCloud",
+					tooltip: "Comfy-Pack",
           content: "Deploy",
           classList: "comfyui-button comfyui-menu-mobile-collapse"
         }).element,
