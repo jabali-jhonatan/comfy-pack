@@ -27,7 +27,9 @@ def _probe_comfyui_server(port: int) -> None:
     _ = request.urlopen(req)
 
 
-def _is_port_in_use(port, host="localhost"):
+def _is_port_in_use(port: int | str, host="localhost"):
+    if isinstance(port, str):
+        port = int(port)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
             s.connect((host, port))

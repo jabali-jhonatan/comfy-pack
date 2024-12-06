@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import socket
 import asyncio
 import hashlib
 import json
@@ -59,6 +60,19 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
             "custom_nodes": await _get_custom_nodes(),
         }
         f.write(json.dumps(data, indent=2))
+
+
+def _is_port_in_use(port: int | str, host="localhost"):
+    if isinstance(port, str):
+        port = int(port)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.connect((host, port))
+            return True
+        except ConnectionRefusedError:
+            return False
+        except Exception:
+            return True
 
 
 def _get_file_info_key(file_path: Path) -> tuple:
@@ -240,25 +254,112 @@ async def pack_workspace(request):
     return web.json_response({"download_url": f"/bentoml/download/{zip_filename}"})
 
 
+class DevServer:
+    TIMEOUT = 20
+    proc: Union[None, subprocess.Popen] = None
+    watch_dog_task: asyncio.Task | None = None
+    last_feed = 0
+    run_dir: Path | None = None
+
+    @classmethod
+    def start(cls, workflow_api: dict, port: int = 3000):
+        cls.stop()
+
+        # prepare a temporary directory
+        cls.run_dir = Path(tempfile.mkdtemp(suffix="-bento", prefix="comfy-pack-"))
+        with cls.run_dir.joinpath("workflow_api.json").open("w") as f:
+            f.write(json.dumps(workflow_api, indent=2))
+        shutil.copy(
+            Path(__file__).with_name("service.py"),
+            cls.run_dir / "service.py",
+        )
+        shutil.copytree(COMFY_PACK_DIR, cls.run_dir / COMFY_PACK_DIR.name)
+
+        # find a free port
+        self_port = 8188
+        for i, arg in enumerate(sys.argv):
+            if arg == "--port" or arg == "-p":
+                self_port = int(sys.argv[i + 1])
+                break
+
+        print(f"Starting dev server at port {port}")
+        cls.proc = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "bentoml",
+                "serve",
+                "service:ComfyService",
+                "--port",
+                str(port),
+            ],
+            cwd=str(cls.run_dir.absolute()),
+            env={
+                **os.environ,
+                "BENTOML_DEBUG": "1",
+                "COMFYUI_SERVER": f"localhost:{self_port}",
+            },
+        )
+        cls.watch_dog_task = asyncio.create_task(cls.watch_dog())
+        cls.last_feed = time.time()
+
+    @classmethod
+    async def watch_dog(cls):
+        while True:
+            await asyncio.sleep(0.1)
+            if cls.last_feed + cls.TIMEOUT < time.time():
+                cls.stop()
+                break
+
+    @classmethod
+    def feed_watch_dog(cls):
+        if cls.proc:
+            cls.last_feed = time.time()
+            return True
+        return False
+
+    @classmethod
+    def stop(cls):
+        if cls.proc:
+            cls.proc.terminate()
+            cls.proc.wait()
+            cls.proc = None
+            print("Dev server stopped")
+        if cls.watch_dog_task:
+            cls.watch_dog_task.cancel()
+            cls.watch_dog_task = None
+            cls.last_feed = 0
+        if cls.run_dir:
+            shutil.rmtree(cls.run_dir)
+            cls.run_dir = None
+
+
 @PromptServer.instance.routes.post("/bentoml/serve")
 async def serve(request):
+    import bentoml
+
     data = await request.json()
-    TEMP_FOLDER.mkdir(exist_ok=True)
-    older_than_1h = time.time() - 60 * 60
-    for file in TEMP_FOLDER.iterdir():
-        if file.is_file() and file.stat().st_ctime < older_than_1h:
-            file.unlink()
-
-    zip_filename = f"{uuid.uuid4()}.zip"
-
-    with zipfile.ZipFile(TEMP_FOLDER / zip_filename, "w") as zf:
-        path = zipfile.Path(zf)
-        await _write_requirements(path)
-        await _write_snapshot(path, data)
-        await _write_workflow(path, data)
-        await _write_inputs(path, data)
-
-    return web.json_response({"download_url": f"/bentoml/download/{zip_filename}"})
+    if _is_port_in_use(data.get("port", 3000), host=data.get("host", "localhost")):
+        return web.json_response(
+            {
+                "result": "error",
+                "error": "Port is already in use",
+            },
+        )
+    try:
+        DevServer.start(workflow_api=data["workflow_api"], port=data.get("port", 3000))
+        return web.json_response(
+            {
+                "result": "success",
+            },
+        )
+    except bentoml.exceptions.BentoMLException as e:
+        return web.json_response(
+            {
+                "result": "error",
+                "error": f"Build failed: {e.__class__.__name__}: {e}",
+            },
+        )
 
 
 @PromptServer.instance.routes.get("/bentoml/download/{zip_filename}")

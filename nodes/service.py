@@ -41,7 +41,9 @@ def _get_workspace() -> Path:
 
     snapshot = BASE_DIR / "snapshot.json"
     checksum = hashlib.md5(snapshot.read_bytes()).hexdigest()
-    wp = Path(BentoMLContainer.bentoml_home.get()) / "run/comfy_workspace" / checksum
+    wp = (
+        Path(BentoMLContainer.bentoml_home.get()) / "run" / "comfy_workspace" / checksum
+    )
     wp.parent.mkdir(parents=True, exist_ok=True)
     return wp
 
@@ -103,6 +105,9 @@ class ComfyService:
     @bentoml.on_deployment
     @staticmethod
     def prepare_comfy_workspace():
+        if EXISTING_COMFYUI_SERVER:
+            return
+
         from comfy_pack.package import install_comfyui, install_custom_modules
 
         verbose = int("BENTOML_DEBUG" in os.environ)

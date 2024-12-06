@@ -256,6 +256,75 @@ async function downloadPackage() {
   }
 }
 
+async function serveBento() {
+  if (document.getElementById("serve-modal")) return;
+  const modal = document.createElement("div");
+  modal.id = "serve-modal";
+  modal.className = "cpack-modal";
+  modal.style.width = "400px";
+
+  const title = document.createElement("div");
+  title.textContent = "Serve Bento";
+  title.className = "cpack-title";
+
+  const form = document.createElement("form");
+  form.innerHTML = serveForm;
+
+  const buttonContainer = document.createElement("div");
+  buttonContainer.className = "cpack-btn-container";
+
+  const confirmButton = document.createElement("button");
+  confirmButton.textContent = "Start";
+  confirmButton.className = "cpack-btn primary";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.textContent = "Cancel";
+  cancelButton.className = "cpack-btn";
+
+  buttonContainer.appendChild(cancelButton);
+  buttonContainer.appendChild(confirmButton);
+
+  modal.appendChild(title);
+  modal.appendChild(form);
+  modal.appendChild(buttonContainer);
+
+  const { close } = createModal(modal);
+  cancelButton.onclick = close;
+
+  form.querySelector("input[name='host']").select();
+  confirmButton.onclick = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const { workflow, output: workflow_api } = await app.graphToPrompt();
+    const data = {
+      host: formData.get("host"),
+      port: formData.get("port"),
+      workflow,
+      workflow_api
+    };
+
+    try {
+      confirmButton.disabled = true;
+      const resp = await api.fetchApi("/bentoml/serve", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" }
+      });
+      const result = await resp.json();
+      if (result.error) {
+        alert(result.error);
+      } else {
+        close();
+        alert(`Bento server started on port ${data.port}`);
+      }
+    } catch(e) {
+      alert(e.message);
+    } finally {
+      confirmButton.disabled = false;
+    }
+  };
+}
+
 async function buildBento() {
   if (document.getElementById("build-modal")) return;
   if (document.getElementById("building-modal")) return;
@@ -263,6 +332,17 @@ async function buildBento() {
   console.log(data);
   await createBuildingModal(data);
 };
+
+const serveForm = `
+<div class="cpack-form-item">
+  <label for="host">Host</label>
+  <input type="text" class="cpack-input" name="host" value="localhost" />
+</div>
+<div class="cpack-form-item">
+  <label for="port">Port</label>
+  <input type="number" class="cpack-input" name="port" value="3000" />
+</div>
+`
 
 const buildForm = `
 <div class="cpack-form-item">
@@ -471,6 +551,11 @@ app.registerExtension({
     buildButton.onclick = buildBento;
     menu.append(buildButton);
 
+    const serveButton = document.createElement("button");
+    serveButton.textContent = "Serve";
+    serveButton.onclick = serveBento;
+    menu.append(serveButton);
+
     try {
 			// new style Manager buttons
 
@@ -488,9 +573,16 @@ app.registerExtension({
 					action: buildBento,
 					tooltip: "Build Workflow as Bento",
           content: "Build Bento",
-          classList: "comfyui-button comfyui-menu-mobile-collapse primary"
-				}).element,
-			);
+                    classList: "comfyui-button comfyui-menu-mobile-collapse primary"
+          				}).element,
+                  new(await import("../../scripts/ui/components/button.js")).ComfyButton({
+          icon: "play",
+          action: serveBento,
+          tooltip: "Serve Bento",
+                    content: "Serve",
+                    classList: "comfyui-button comfyui-menu-mobile-collapse"
+          				}).element,
+          			);
 
 			app.menu?.settingsGroup.element.before(cmGroup.element);
 		}
