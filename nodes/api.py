@@ -255,16 +255,18 @@ async def pack_workspace(request):
 
 
 class DevServer:
-    TIMEOUT = 20
+    TIMEOUT = 3
     proc: Union[None, subprocess.Popen] = None
     watch_dog_task: asyncio.Task | None = None
     last_feed = 0
     run_dir: Path | None = None
+    port = 0
 
     @classmethod
     def start(cls, workflow_api: dict, port: int = 3000):
         cls.stop()
 
+        cls.port = port
         # prepare a temporary directory
         cls.run_dir = Path(tempfile.mkdtemp(suffix="-bento", prefix="comfy-pack-"))
         with cls.run_dir.joinpath("workflow_api.json").open("w") as f:
@@ -282,7 +284,7 @@ class DevServer:
                 self_port = int(sys.argv[i + 1])
                 break
 
-        print(f"Starting dev server at port {port}")
+        print(f"Starting dev server at port {port}, comfyui at port {self_port}")
         cls.proc = subprocess.Popen(
             [
                 sys.executable,
@@ -296,7 +298,6 @@ class DevServer:
             cwd=str(cls.run_dir.absolute()),
             env={
                 **os.environ,
-                "BENTOML_DEBUG": "1",
                 "COMFYUI_SERVER": f"localhost:{self_port}",
             },
         )
@@ -324,6 +325,7 @@ class DevServer:
             cls.proc.terminate()
             cls.proc.wait()
             cls.proc = None
+            time.sleep(1)
             print("Dev server stopped")
         if cls.watch_dog_task:
             cls.watch_dog_task.cancel()
@@ -336,9 +338,9 @@ class DevServer:
 
 @PromptServer.instance.routes.post("/bentoml/serve")
 async def serve(request):
-    import bentoml
-
     data = await request.json()
+    DevServer.stop()
+
     if _is_port_in_use(data.get("port", 3000), host=data.get("host", "localhost")):
         return web.json_response(
             {
@@ -351,15 +353,26 @@ async def serve(request):
         return web.json_response(
             {
                 "result": "success",
+                "url": f"http://{data.get('host', 'localhost')}:{data.get('port', 3000)}",
             },
         )
-    except bentoml.exceptions.BentoMLException as e:
+    except Exception as e:
         return web.json_response(
             {
                 "result": "error",
                 "error": f"Build failed: {e.__class__.__name__}: {e}",
             },
         )
+
+
+@PromptServer.instance.routes.post("/bentoml/serve/heartbeat")
+async def heartbeat(_):
+    running = DevServer.feed_watch_dog()
+
+    if running:
+        return web.json_response({"ready": True})
+    else:
+        return web.json_response({"error": "Server is not running"})
 
 
 @PromptServer.instance.routes.get("/bentoml/download/{zip_filename}")

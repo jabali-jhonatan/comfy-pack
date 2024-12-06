@@ -264,7 +264,7 @@ async function serveBento() {
   modal.style.width = "400px";
 
   const title = document.createElement("div");
-  title.textContent = "Serve Bento";
+  title.textContent = "Development Server";
   title.className = "cpack-title";
 
   const form = document.createElement("form");
@@ -291,13 +291,13 @@ async function serveBento() {
   const { close } = createModal(modal);
   cancelButton.onclick = close;
 
-  form.querySelector("input[name='host']").select();
+  form.querySelector("input[name='port']").select();
   confirmButton.onclick = async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
     const { workflow, output: workflow_api } = await app.graphToPrompt();
     const data = {
-      host: formData.get("host"),
+      host: formData.get("allowExternal") === "on" ? "0.0.0.0" : "localhost",
       port: formData.get("port"),
       workflow,
       workflow_api
@@ -312,13 +312,17 @@ async function serveBento() {
       });
       const result = await resp.json();
       if (result.error) {
-        alert(result.error);
+        const errorDiv = form.querySelector('.error-message');
+        errorDiv.textContent = result.error;
+        errorDiv.style.display = 'block';
       } else {
         close();
-        alert(`Bento server started on port ${data.port}`);
+        createServeStatusModal(result.url);
       }
     } catch(e) {
-      alert(e.message);
+      const errorDiv = form.querySelector('.error-message');
+      errorDiv.textContent = e.message;
+      errorDiv.style.display = 'block';
     } finally {
       confirmButton.disabled = false;
     }
@@ -335,12 +339,15 @@ async function buildBento() {
 
 const serveForm = `
 <div class="cpack-form-item">
-  <label for="host">Host</label>
-  <input type="text" class="cpack-input" name="host" value="localhost" />
+  <label>
+    <input type="checkbox" name="allowExternal" />
+    Allow External Access
+  </label>
 </div>
 <div class="cpack-form-item">
   <label for="port">Port</label>
   <input type="number" class="cpack-input" name="port" value="3000" />
+  <div class="error-message" style="color: #ff8383; margin-top: 5px; display: none"></div>
 </div>
 `
 
@@ -449,6 +456,80 @@ function createBuildModal() {
   });
 }
 
+async function createServeStatusModal(url) {
+  const modal = document.createElement("div");
+  modal.className = "cpack-modal";
+  modal.style.width = "400px";
+
+  const title = document.createElement("div");
+  title.textContent = "Development Server";
+  title.className = "cpack-title";
+
+  const info = document.createElement("div");
+  const urlObj = new URL(url);
+  const currentHost = window.location.hostname;
+  const port = urlObj.port;
+  const displayUrl = `${currentHost}:${port}`;
+  info.innerHTML = `
+    <div style="margin-bottom: 15px">
+      <div style="text-align: center; margin-bottom: 15px; color: #00a67d">
+        🎉 Service is online! Click below to open:
+      </div>
+      <div style="text-align: center; margin-top: 15px">
+        <a href="http://${displayUrl}" target="_blank" style="color:#00a67d;text-decoration:none;font-weight:bold;font-size:1.2em">
+          ${displayUrl}
+          <span style="color:#00a67d;font-size:1em">↗</span>
+        </a>
+      </div>
+    </div>
+    <div id="status-info" style="display:flex;justify-content:center;align-items:center">
+      ${spinner}
+    </div>
+  `;
+
+  const buttonContainer = document.createElement("div");
+  buttonContainer.className = "cpack-btn-container";
+
+  const cancelButton = document.createElement("button");
+  cancelButton.textContent = "Stop Server";
+  cancelButton.className = "cpack-btn";
+  cancelButton.style.cssText = "background: #a63d3d; color: white; font-weight: bold";
+
+  buttonContainer.appendChild(cancelButton);
+
+  modal.appendChild(title);
+  modal.appendChild(info);
+  modal.appendChild(buttonContainer);
+
+  const { close } = createModal(modal);
+  
+  
+
+  cancelButton.onclick = () => {
+    clearInterval(checkInterval);
+    close();
+  };
+
+  const statusInfo = info.querySelector("#status-info");
+  
+  // Start status checking
+  const checkInterval = setInterval(async () => {
+    try {
+      const resp = await api.fetchApi("/bentoml/serve/heartbeat", { method: "POST" });
+      const status = await resp.json();
+      if (status.error) {
+        title.textContent = "Server Error";
+        statusInfo.innerHTML = `<div style="color:#ff8383">${status.error}</div>`;
+        clearInterval(checkInterval);
+      }
+    } catch(e) {
+      title.textContent = "Status Check Error";
+      statusInfo.innerHTML = `<div style="color:#ff8383">${e.message}</div>`;
+      clearInterval(checkInterval);
+    }
+  }, 1000);
+}
+
 const spinner = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
   <path fill="currentColor" d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25"/>
   <path fill="currentColor" d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z">
@@ -541,26 +622,35 @@ app.registerExtension({
     separator.style.margin = "20px 0";
     separator.style.width = "100%";
     menu.append(separator);
-    const packButton = document.createElement("button");
-    packButton.textContent = "Package";
-    packButton.onclick = downloadPackage;
-    menu.append(packButton);
-
-    const buildButton = document.createElement("button");
-    buildButton.textContent = "Build";
-    buildButton.onclick = buildBento;
-    menu.append(buildButton);
 
     const serveButton = document.createElement("button");
     serveButton.textContent = "Serve";
     serveButton.onclick = serveBento;
     menu.append(serveButton);
 
+    const packButton = document.createElement("button");
+    packButton.textContent = "Package";
+    packButton.onclick = downloadPackage;
+    menu.append(packButton);
+
+    const buildButton = document.createElement("button");
+    buildButton.textContent = "Deploy";
+    buildButton.onclick = buildBento;
+    menu.append(buildButton);
+
+
     try {
 			// new style Manager buttons
 
 			// unload models button into new style Manager button
 			let cmGroup = new (await import("../../scripts/ui/components/buttonGroup.js")).ComfyButtonGroup(
+        new(await import("../../scripts/ui/components/button.js")).ComfyButton({
+          icon: "play",
+          action: serveBento,
+          tooltip: "Start a development server",
+          content: "Serve",
+          classList: "comfyui-button comfyui-menu-mobile-collapse primary"
+        }).element,
 				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
 					icon: "package-variant-closed",
 					action: downloadPackage,
@@ -571,18 +661,11 @@ app.registerExtension({
 				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
 					icon: "package-up",
 					action: buildBento,
-					tooltip: "Build Workflow as Bento",
-          content: "Build Bento",
-                    classList: "comfyui-button comfyui-menu-mobile-collapse primary"
-          				}).element,
-                  new(await import("../../scripts/ui/components/button.js")).ComfyButton({
-          icon: "play",
-          action: serveBento,
-          tooltip: "Serve Bento",
-                    content: "Serve",
-                    classList: "comfyui-button comfyui-menu-mobile-collapse"
-          				}).element,
-          			);
+					tooltip: "Deploy API service to BentoCloud",
+          content: "Deploy",
+          classList: "comfyui-button comfyui-menu-mobile-collapse"
+        }).element,
+      );
 
 			app.menu?.settingsGroup.element.before(cmGroup.element);
 		}
