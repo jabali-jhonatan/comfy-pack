@@ -246,10 +246,7 @@ async def pack_workspace(request):
 
     with zipfile.ZipFile(TEMP_FOLDER / zip_filename, "w") as zf:
         path = zipfile.Path(zf)
-        await _write_requirements(path)
-        await _write_snapshot(path, data)
-        await _write_workflow(path, data)
-        await _write_inputs(path, data)
+        await _prepare_bento_project(path, data)
 
     return web.json_response({"download_url": f"/bentoml/download/{zip_filename}"})
 
@@ -381,6 +378,31 @@ async def download_workspace(request):
     return web.FileResponse(TEMP_FOLDER / zip_filename)
 
 
+async def _prepare_bento_project(
+    working_dir: ZPath,
+    data: dict,
+    store_models: bool = False,
+):
+    models = await _get_models(data, store_models=store_models)
+
+    await _write_requirements(working_dir, ["comfy-cli", "fastapi"])
+    await _write_snapshot(working_dir, data, models)
+    await _write_workflow(working_dir, data)
+    await _write_inputs(working_dir, data)
+    with working_dir.joinpath("service.py").open("w") as f:
+        f.write(Path(__file__).with_name("service.py").read_text())
+
+    # Copy comfy_pack directory
+    if isinstance(working_dir, Path):
+        shutil.copytree(COMFY_PACK_DIR, working_dir / COMFY_PACK_DIR.name)
+    else:  # zipfile.Path
+        for src in COMFY_PACK_DIR.rglob("*"):
+            if src.is_file():
+                rel_path = src.relative_to(COMFY_PACK_DIR.parent)
+                with working_dir.joinpath(rel_path).open("wb") as f:
+                    f.write(src.read_bytes())
+
+
 @PromptServer.instance.routes.post("/bentoml/build")
 async def build_bento(request):
     """Request body: {
@@ -398,18 +420,7 @@ async def build_bento(request):
 
     with tempfile.TemporaryDirectory(suffix="-bento", prefix="comfy-pack-") as temp_dir:
         temp_dir_path = Path(temp_dir)
-        # copy comfy_pack source code into the bento
-        shutil.copytree(COMFY_PACK_DIR, temp_dir_path / COMFY_PACK_DIR.name)
-        models = await _get_models(data, store_models=True)
-
-        await _write_requirements(temp_dir_path, ["comfy-cli", "fastapi"])
-        await _write_snapshot(temp_dir_path, data, models)
-        await _write_workflow(temp_dir_path, data)
-        await _write_inputs(temp_dir_path, data)
-        shutil.copy(
-            Path(__file__).with_name("service.py"),
-            temp_dir_path / "service.py",
-        )
+        await _prepare_bento_project(temp_dir_path, data, store_models=True)
 
         # create a bento
         try:

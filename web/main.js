@@ -353,7 +353,7 @@ const serveForm = `
 
 const buildForm = `
 <div class="cpack-form-item">
-  <label for="bentoName">Bento Name</label>
+  <label for="bentoName">Service Name</label>
   <input type="text" class="cpack-input" name="bentoName" value="comfy-pack" />
 </div>
 <div class="cpack-form-item">
