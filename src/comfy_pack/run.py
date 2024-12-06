@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import random
+import uuid
 import copy
 import json
 import logging
 import os
+import socket
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,27 +27,51 @@ def _probe_comfyui_server(port: int) -> None:
     _ = request.urlopen(req)
 
 
-class WorkflowRunner:
+def _is_port_in_use(port, host="localhost"):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.connect((host, port))
+            return True
+        except ConnectionRefusedError:
+            return False
+        except Exception:
+            return True
+
+
+class ComfyUIServer:
     def __init__(
         self,
         workspace: str,
         input_dir: str | None = None,
+        host: str = "localhost",
         port: int | None = None,
+        verbose: int = 0,
     ) -> None:
         """
-        Initialize the WorkflowRunner.
-
         Args:
-            workspace (str): The workspace path for ComfyUI.
+            workspace (str, optional): The workspace path for ComfyUI. If not specified, runner will try to connect to an existing ComfyUI server.
+            input_dir (str, optional): The input directory for ComfyUI. Defaults to None.
+            port (int, optional): The port number for ComfyUI. Defaults to None. If 8188 is in use, a random port will be chosen.
         """
         self.workspace = workspace
-        self.temp_dir = Path(workspace) / "cli_run" / "temp"
-        self.output_dir = Path(workspace) / "cli_run" / "output"
         self.input_dir = input_dir
-        self.is_running = False
-        self.port = port if port else random.randint(58000, 58999)
+        self.verbose = verbose
+        self.server_running = False
+        self.host = host
 
-    def start(self, verbose: int = 0) -> None:
+        run_dir = Path(workspace) / "cli_run"
+        self.temp_dir = run_dir / "temp"
+        self.output_dir = run_dir / "output"
+
+        if port is None:
+            if _is_port_in_use(8188):
+                self.port = port if port else random.randint(58000, 58999)
+            else:
+                self.port = 8188
+        else:
+            self.port = port
+
+    def __enter__(self):
         """
         Start the ComfyUI process.
 
@@ -58,16 +84,13 @@ class WorkflowRunner:
         Raises:
             RuntimeError: If ComfyUI is already running.
         """
-        if self.is_running:
-            raise RuntimeError("ComfyUI Runner is already started")
-
         logger.info(
             "Disable tracking from Comfy CLI, not for privacy concerns, but to workaround a bug"
         )
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        stdout = None if verbose > 0 else subprocess.DEVNULL
+        stdout = None if self.verbose > 0 else subprocess.DEVNULL
         command = ["comfy", "--skip-prompt", "tracking", "disable"]
         subprocess.run(command, check=True, stdout=stdout)
         logger.info("Successfully disabled Comfy CLI tracking")
@@ -88,17 +111,20 @@ class WorkflowRunner:
             self.temp_dir,
             "--port",
             str(self.port),
+            "--listen",
+            self.host,
         ]
         if self.input_dir:
             command.extend(["--input-directory", self.input_dir])
         if subprocess.run(command, check=True, stdout=stdout):
-            self.is_running = True
             _probe_comfyui_server(self.port)
             logger.info("Successfully started ComfyUI in the background")
+            self.server_running = True
         else:
             logger.error("Failed to start ComfyUI in the background")
+        return self
 
-    def stop(self, verbose: int = 0) -> None:
+    def __exit__(self, exc_type, exc_val, exc_tb):
         """
         Stop the ComfyUI process.
 
@@ -107,12 +133,12 @@ class WorkflowRunner:
         Raises:
             RuntimeError: If ComfyUI is not currently running.
         """
-        if not self.is_running:
-            raise RuntimeError("ComfyUI Runner is not started yet")
+        if not self.server_running:
+            raise RuntimeError("ComfyUI server is not started yet")
 
         logger.info("Stopping ComfyUI...")
         command = ["comfy", "stop"]
-        stdout = None if verbose > 0 else subprocess.DEVNULL
+        stdout = None if self.verbose > 0 else subprocess.DEVNULL
         subprocess.run(command, check=True, stdout=stdout)
         logger.info("Successfully stopped ComfyUI")
 
@@ -121,79 +147,85 @@ class WorkflowRunner:
         shutil.rmtree(self.output_dir, ignore_errors=True)
         logger.info("Successfully cleaned up temporary directory")
 
-        self.is_running = False
+        self.server_running = False
+        return False
 
-    def run_workflow(
-        self,
-        workflow: dict,
-        output_dir: Union[str, Path, None] = None,
-        timeout: int = 300,
-        verbose: int = 0,
-        **kwargs: Any,
-    ) -> Any:
-        """
-        Run a ComfyUI workflow.
 
-        This method executes a given workflow, populates it with input data,
-        and retrieves the output.
+def run_workflow(
+    host: str,
+    port: int,
+    workflow: dict,
+    output_dir: Union[str, Path, None] = None,
+    timeout: int = 300,
+    verbose: int = 0,
+    **kwargs: Any,
+) -> Any:
+    """
+    Run a ComfyUI workflow.
 
-        Args:
-            workflow (dict): The workflow to run.
-            output_dir (Union[str, Path, None], optional): Temporary directory for the workflow. Defaults to None.
-            timeout (int, optional): Timeout for the workflow execution in seconds. Defaults to 300.
-            **kwargs: Additional keyword arguments for workflow population.
+    This method executes a given workflow, populates it with input data,
+    and retrieves the output.
 
-        Returns:
-            Any: The output of the workflow.
+    Args:
+        workflow (dict): The workflow to run.
+        output_dir (Union[str, Path, None], optional): Temporary directory for the workflow. Defaults to None.
+        timeout (int, optional): Timeout for the workflow execution in seconds. Defaults to 300.
+        **kwargs: Additional keyword arguments for workflow population.
 
-        Raises:
-            RuntimeError: If ComfyUI is not started.
-        """
-        if not self.is_running:
-            raise RuntimeError("ComfyUI Runner is not started yet")
+    Returns:
+        Any: The output of the workflow.
 
-        workflow_copy = copy.deepcopy(workflow)
-        if output_dir is None:
-            output_dir = Path(".")
-        if isinstance(output_dir, str):
-            output_dir = Path(output_dir)
+    Raises:
+        RuntimeError: If ComfyUI is not started.
+    """
+    run_id = uuid.uuid4().hex[:8]
 
-        run_id = os.urandom(8).hex()
-        populate_workflow(
-            workflow_copy,
-            output_dir,
-            session_id=run_id,
-            **kwargs,
-        )
+    workflow_copy = copy.deepcopy(workflow)
+    if output_dir is None:
+        output_dir = Path(".")
+    if isinstance(output_dir, str):
+        output_dir = Path(output_dir)
 
-        workflow_file_path = Path(self.workspace) / "workflow.json"
-        with open(workflow_file_path, "w") as file:
-            json.dump(workflow_copy, file)
+    run_id = os.urandom(8).hex()
+    populate_workflow(
+        workflow_copy,
+        output_dir,
+        session_id=run_id,
+        **kwargs,
+    )
 
-        extra_args = []
-        if verbose > 0:
-            extra_args.append("--verbose")
+    workflow_file_path = output_dir / f"workflow_{run_id}.json"
+    with open(workflow_file_path, "w") as file:
+        json.dump(workflow_copy, file)
 
-        # Execute the workflow
-        command = [
-            "comfy",
-            "run",
-            "--workflow",
-            workflow_file_path.as_posix(),
-            "--port",
-            str(self.port),
-            "--timeout",
-            str(timeout),
-            "--wait",
-            *extra_args,
-        ]
-        env = os.environ.copy()
-        env["NO_COLOR"] = "1"
-        subprocess.run(command, check=True, env=env)
+    extra_args = []
+    if verbose > 0:
+        extra_args.append("--verbose")
 
-        # retrieve the output
-        return retrieve_workflow_outputs(
-            workflow_copy,
-            output_dir,
-            session_id=run_id,
-        )
+    # Execute the workflow
+    command = [
+        "comfy",
+        "run",
+        "--workflow",
+        workflow_file_path.as_posix(),
+        "--port",
+        str(port),
+        "--host",
+        host,
+        "--timeout",
+        str(timeout),
+        "--wait",
+        *extra_args,
+    ]
+    env = os.environ.copy()
+    env["NO_COLOR"] = "1"
+    subprocess.run(command, check=True, env=env)
+
+    workflow_file_path.unlink()
+
+    # retrieve the output
+    return retrieve_workflow_outputs(
+        workflow_copy,
+        output_dir,
+        session_id=run_id,
+    )

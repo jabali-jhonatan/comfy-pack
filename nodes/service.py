@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import contextlib
 import os
 import shutil
 from functools import lru_cache
@@ -20,6 +21,10 @@ WORKFLOW_FILE = BASE_DIR / "workflow_api.json"
 COPY_THRESHOLD = 10 * 1024 * 1024
 INPUT_DIR = BASE_DIR / "input"
 logger = logging.getLogger("bentoml.service")
+
+
+EXISTING_COMFYUI_SERVER = os.environ.get("COMFYUI_SERVER")
+
 
 with open(WORKFLOW_FILE, "r") as f:
     workflow = json.load(f)
@@ -50,11 +55,24 @@ def workflow_json():
 @bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2}, resources={"gpu": 1})
 class ComfyService:
     def __init__(self):
-        self.comfy_proc = comfy_pack.run.WorkflowRunner(
-            str(_get_workspace()),
-            str(INPUT_DIR),
-        )
-        self.comfy_proc.start(verbose=int("BENTOML_DEBUG" in os.environ))
+        if not EXISTING_COMFYUI_SERVER:
+            self.server_stack = contextlib.ExitStack()
+            server = self.server_stack.enter_context(
+                comfy_pack.run.ComfyUIServer(
+                    str(_get_workspace()),
+                    str(INPUT_DIR),
+                    verbose=int("BENTOML_DEBUG" in os.environ),
+                )
+            )
+            self.host = server.host
+            self.port = server.port
+        else:
+            if ":" in EXISTING_COMFYUI_SERVER:
+                self.host, port = EXISTING_COMFYUI_SERVER.split(":")
+                self.port = int(port)
+            else:
+                self.host = EXISTING_COMFYUI_SERVER
+                self.port = 80
 
     @bentoml.api(input_spec=InputModel)
     def generate(
@@ -64,7 +82,9 @@ class ComfyService:
         **kwargs: Any,
     ) -> Path:
         verbose = int("BENTOML_DEBUG" in os.environ)
-        ret = self.comfy_proc.run_workflow(
+        ret = comfy_pack.run_workflow(
+            self.host,
+            self.port,
             workflow,
             output_dir=ctx.temp_dir,
             timeout=REQUEST_TIMEOUT,
@@ -77,7 +97,8 @@ class ComfyService:
 
     @bentoml.on_shutdown
     def on_shutdown(self):
-        self.comfy_proc.stop()
+        if not EXISTING_COMFYUI_SERVER:
+            self.server_stack.close()
 
     @bentoml.on_deployment
     @staticmethod

@@ -1,4 +1,4 @@
-from .run import WorkflowRunner
+from .run import ComfyUIServer, run_workflow
 from .utils import (
     generate_input_model,
     parse_workflow,
@@ -7,7 +7,8 @@ from .utils import (
 )
 
 __all__ = [
-    "WorkflowRunner",
+    "ComfyUIServer",
+    "run_workflow",
     "parse_workflow",
     "generate_input_model",
     "populate_workflow",

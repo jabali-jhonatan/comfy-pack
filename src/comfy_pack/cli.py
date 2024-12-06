@@ -168,14 +168,13 @@ def run(ctx, cpack: str, output_dir: str):
     console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
     console.print(f"{workspace}")
 
-    from .run import WorkflowRunner
+    from .run import ComfyUIServer, run_workflow
 
-    runner = None
-    try:
-        runner = WorkflowRunner(str(workspace.absolute()))
-        runner.start()
+    with ComfyUIServer(str(workspace.absolute()), verbose=ctx.obj["verbose"]) as server:
         console.print("\n[green]✓ ComfyUI is launched in the background![/green]")
-        results = runner.run_workflow(
+        results = run_workflow(
+            server.host,
+            server.port,
             workflow,
             Path(output_dir).absolute(),
             verbose=ctx.obj["verbose"],
@@ -192,6 +191,3 @@ def run(ctx, cpack: str, output_dir: str):
                 console.print(f"{i}: {value}")
         else:
             console.print(results)
-    finally:
-        if runner:
-            runner.stop(verbose=ctx.obj["verbose"])
