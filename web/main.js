@@ -169,12 +169,12 @@ async function loadModels(modelsList, countId) {
                      style="margin-top: 4px;"
                      ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
               <div style="margin-left: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="font-weight: bold;">${name}</div>
-                  ${model.size ? `<span style="background: #444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">${size} MB</span>` : ''}
-                  ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
-                  ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Mentioned in node inputs">Referenced</span>` : ''}
-                </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
+                <div style="font-weight: bold; white-space: nowrap;">${name}</div>
+                ${model.size ? `<span style="background: #444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; white-space: nowrap;">${size} MB</span>` : ''}
+                ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help; white-space: nowrap;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
+                ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help; white-space: nowrap;" title="Mentioned in node inputs">Referenced</span>` : ''}
+              </div>
                 <div style="color: #888; font-size: 0.9em;">
                   ${path}
                 </div>
