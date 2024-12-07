@@ -502,6 +502,8 @@ async function createServeStatusModal(url) {
   
 
   cancelButton.onclick = async () => {
+    cancelButton.disabled = true;
+    cancelButton.style.background = "#666";
     try {
       await api.fetchApi("/bentoml/serve/terminate", { method: "POST" });
     } catch(e) {
