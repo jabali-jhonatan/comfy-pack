@@ -501,7 +501,12 @@ async function createServeStatusModal(url) {
   
   
 
-  cancelButton.onclick = () => {
+  cancelButton.onclick = async () => {
+    try {
+      await api.fetchApi("/bentoml/serve/terminate", { method: "POST" });
+    } catch(e) {
+      console.error("Failed to stop server:", e);
+    }
     clearInterval(checkInterval);
     close();
   };

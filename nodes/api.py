@@ -252,7 +252,7 @@ async def pack_workspace(request):
 
 
 class DevServer:
-    TIMEOUT = 3
+    TIMEOUT = 3600 * 24
     proc: Union[None, subprocess.Popen] = None
     watch_dog_task: asyncio.Task | None = None
     last_feed = 0
@@ -312,8 +312,12 @@ class DevServer:
     @classmethod
     def feed_watch_dog(cls):
         if cls.proc:
-            cls.last_feed = time.time()
-            return True
+            if cls.proc.poll() is None:
+                cls.last_feed = time.time()
+                return True
+            else:
+                cls.stop()
+                return False
         return False
 
     @classmethod
@@ -370,6 +374,12 @@ async def heartbeat(_):
         return web.json_response({"ready": True})
     else:
         return web.json_response({"error": "Server is not running"})
+
+
+@PromptServer.instance.routes.post("/bentoml/serve/terminate")
+async def terminate(_):
+    DevServer.stop()
+    return web.json_response({"result": "success"})
 
 
 @PromptServer.instance.routes.get("/bentoml/download/{zip_filename}")
