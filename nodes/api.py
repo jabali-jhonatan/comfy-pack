@@ -13,7 +13,7 @@ import time
 import uuid
 import zipfile
 from pathlib import Path
-from typing import Union
+from typing import Union, Any
 
 import folder_paths
 from aiohttp import web
@@ -76,24 +76,27 @@ def _is_port_in_use(port: int | str, host="localhost"):
 
 
 def _get_file_info_key(file_path: Path) -> tuple:
-    # use mtime, size to determine if a file has changed
-    return (file_path.stat().st_mtime, file_path.stat().st_size)
+    # use size and first 1KB content hash to determine if a file has changed
+    size = file_path.stat().st_size
+    with open(file_path, "rb") as f:
+        content_hash = hashlib.sha256(f.read(1024)).hexdigest()
+    return (size, content_hash)
 
 
 def _get_model_hash(file_path: Path) -> str:
     TEMP_FOLDER.mkdir(exist_ok=True)
-    cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache.json"
+    cpack_hash_cache_file = TEMP_FOLDER / "models_sha_cache.json"
     try:
         with cpack_hash_cache_file.open("r") as f:
             cache = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         cache = {}
 
-    mtime, size = _get_file_info_key(file_path)
+    size, content_hash = _get_file_info_key(file_path)
     if file_path.absolute().as_posix() in cache:
         if (
-            cache[file_path.absolute().as_posix()]["mtime"] == mtime
-            and cache[file_path.absolute().as_posix()]["size"] == size
+            cache[file_path.absolute().as_posix()]["size"] == size
+            and cache[file_path.absolute().as_posix()]["content_hash"] == content_hash
         ):
             return cache[file_path.absolute().as_posix()]["sha256"]
 
@@ -105,8 +108,8 @@ def _get_model_hash(file_path: Path) -> str:
         sha = hasher.hexdigest()
         cache[file_path.absolute().as_posix()] = {
             "sha256": sha,
-            "mtime": mtime,
             "size": size,
+            "content_hash": content_hash,
         }
         json.dump(cache, f)
         return sha
@@ -355,9 +358,63 @@ class DevServer:
             cls.run_dir = None
 
 
+def _parse_workflow(workflow: dict) -> tuple[dict[str, Any], dict[str, Any]]:
+    inputs = {}
+    outputs = {}
+    dep_map = {}
+
+    for id, node in workflow.items():
+        for input_name, v in node["inputs"].items():
+            if isinstance(v, list) and len(v) == 2:  # is a link
+                dep_map[tuple(v)] = node, input_name
+
+    for id, node in workflow.items():
+        node["id"] = id
+        if node["class_type"].startswith("CPackInput"):
+            if not node.get("inputs"):
+                continue
+            inputs[id] = node
+        elif node["class_type"].startswith("CPackOutput"):
+            if not node.get("inputs"):
+                continue
+            outputs[id] = node
+
+    return inputs, outputs
+
+
+def _validate_workflow(data: dict):
+    workflow = data.get("workflow_api", {})
+    if not workflow:
+        return web.json_response(
+            {
+                "result": "error",
+                "error": "empty workflow",
+            },
+        )
+    input_spec, output_spec = _parse_workflow(workflow)
+    if not input_spec:
+        return web.json_response(
+            {
+                "result": "error",
+                "error": "At least one ComfyPack input node is required",
+            },
+        )
+    if not output_spec:
+        return web.json_response(
+            {
+                "result": "error",
+                "error": "At least one ComfyPack output node is required",
+            },
+        )
+
+
 @PromptServer.instance.routes.post("/bentoml/serve")
 async def serve(request):
     data = await request.json()
+
+    if (error := _validate_workflow(data)) is not None:
+        return error
+
     DevServer.stop()
 
     if _is_port_in_use(data.get("port", 3000), host=data.get("host", "localhost")):
@@ -458,6 +515,9 @@ async def build_bento(request):
     import bentoml
 
     data = await request.json()
+
+    if (error := _validate_workflow(data)) is not None:
+        return error
 
     with tempfile.TemporaryDirectory(suffix="-bento", prefix="comfy-pack-") as temp_dir:
         temp_dir_path = Path(temp_dir)
