@@ -250,7 +250,7 @@ async function createPackModal() {
     form.innerHTML = `
       <div class="cpack-form-item">
         <label for="filename">Name</label>
-        <input type="text" class="cpack-input" name="filename" value="package" />
+        <input type="text" class="cpack-input" name="filename" value="comfy-pack-pkg" />
       </div>
       <div class="cpack-form-item">
         <details>
@@ -307,7 +307,7 @@ async function createPackModal() {
         close();
         resolve({
           filename,
-          models: modelsSelector ? modelsSelector.getSelectedModels() : []
+          models: Array.from(form.querySelectorAll("input[name='models']:checked")).map(input => input.value)
         });
       }
     };
@@ -510,7 +510,7 @@ const buildForm = `
   </p>
 <div class="cpack-form-item">
   <label for="bentoName">Service Name</label>
-  <input type="text" class="cpack-input" name="bentoName" value="comfy-pack" />
+  <input type="text" class="cpack-input" name="bentoName" value="comfy-pack-app" />
 </div>
 <div class="cpack-form-item">
   <label for="systemPackages">System Packages</label>
@@ -526,17 +526,18 @@ const buildForm = `
     </div>
   </details>
 </div>
-<div id="credentials-group">
-  <div class="cpack-form-item">
-    <label for="bentoName">BentoCloud Endpoint</label>
-    <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" />
-  </div>
-  <div class="cpack-form-item">
-    <label for="bentoName">BentoCloud API Key</label>
-    <input type="password" class="cpack-input" name="apiKey" />
-    <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
-      Get your API credentials at <a href="https://cloud.bentoml.com/signup?from=comfy-pack" target="_blank" style="color: #00a67d;">cloud.bentoml.com</a>
-    </p>
+<div class="cpack-form-item">
+  <label>BentoCloud API Token</label>
+  <div id="credentials-group" style="margin-top: 10px;">
+    <div class="cpack-form-item">
+      <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" />
+    </div>
+    <div class="cpack-form-item">
+      <input type="password" class="cpack-input" name="apiKey" placeholder="cta8..." />
+    </div>
+      <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
+        Get your API Token at <a href="https://cloud.bentoml.com/signup?from=comfy-pack" target="_blank" style="color: #00a67d;">cloud.bentoml.com</a>
+      </p>
   </div>
 </div>
 `
