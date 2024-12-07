@@ -433,6 +433,7 @@ async def _prepare_bento_project(
                 rel_path = src.relative_to(COMFY_PACK_DIR.parent)
                 with working_dir.joinpath(rel_path).open("wb") as f:
                     f.write(src.read_bytes())
+    models = [m for m in models if not m["disabled"]]  # filter out disabled models
     return models
 
 

@@ -1,6 +1,13 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+const spinner = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+  <path fill="currentColor" d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25"/>
+  <path fill="currentColor" d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z">
+    <animateTransform attributeName="transform" dur="0.75s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12"/>
+  </path>
+</svg>`
+
 const style = `
 .cpack-modal {
   position: fixed;
@@ -107,6 +114,111 @@ const style = `
 }
 `
 
+async function loadModels(modelsList, countId) {
+  try {
+    const { workflow, output: workflow_api } = await app.graphToPrompt();
+    const resp = await api.fetchApi("/bentoml/model/query", { 
+        method: "POST",
+        body: JSON.stringify({ workflow, workflow_api }),
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await resp.json();
+      const models = Array.isArray(data) ? data : (data.models || []);
+      // Sort models by referenced status first, then by access/creation time
+      models.sort((a, b) => {
+        // First compare referenced status
+        if (a.refered && !b.refered) return -1;
+        if (!a.refered && b.refered) return 1;
+        
+        // If referenced status is the same, compare by time
+        const timeA = Math.max(a.atime || 0, a.ctime || 0);
+        const timeB = Math.max(b.atime || 0, b.ctime || 0);
+        return timeB - timeA;
+      });
+      
+      modelsList.style.cssText = `
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 5px;
+      `;
+      
+      const now = Date.now() / 1000;
+      const ONE_DAY = 24 * 60 * 60;
+
+      // Add select all checkbox
+      modelsList.innerHTML = `
+        <div style="padding: 6px 0; border-bottom: 1px solid #444; margin-bottom: 5px;">
+          <label style="display: flex; align-items: center;">
+            <input type="checkbox" id="select-all-models" style="margin-right: 8px;" />
+            <span>Select All</span>
+          </label>
+        </div>
+      ` + models.map(model => {
+        const size = (model.size / (1024 * 1024)).toFixed(2); // Convert to MB
+        const path = String(model.filename || '');
+        const name = path ? path.split('/').pop() : 'Unknown'; // Get filename from path
+        
+        const isRecentlyAccessed = (now - (model.atime || 0)) < ONE_DAY;
+        
+        return `
+          <div style="padding: 6px 0; border-bottom: 1px solid #333;">
+            <label style="display: flex; align-items: flex-start;">
+              <input type="checkbox" name="models" value="${path}" 
+                     style="margin-top: 4px;"
+                     ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
+              <div style="margin-left: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="font-weight: bold;">${name}</div>
+                  ${model.size ? `<span style="background: #444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">${size} MB</span>` : ''}
+                  ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
+                  ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Mentioned in node inputs">Referenced</span>` : ''}
+                </div>
+                <div style="color: #888; font-size: 0.9em;">
+                  ${path}
+                </div>
+              </div>
+            </label>
+          </div>
+        `;
+      }).join('');
+      
+      // Add change event listeners to all checkboxes
+      modelsList.querySelectorAll("input[name='models']").forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          const count = modelsList.querySelectorAll("input[name='models']:checked").length;
+          const countSpan = document.querySelector(`[data-models-count='${countId}']`);
+          if (countSpan) {
+            countSpan.textContent = count;
+          }
+        });
+      });
+
+      // Add select all functionality
+      const selectAllCheckbox = modelsList.querySelector("#select-all-models");
+      selectAllCheckbox.addEventListener('change', (e) => {
+        const modelCheckboxes = modelsList.querySelectorAll("input[name='models']");
+        modelCheckboxes.forEach(checkbox => {
+          checkbox.checked = e.target.checked;
+        });
+        const count = modelsList.querySelectorAll("input[name='models']:checked").length;
+        const countSpan = document.querySelector(`[data-models-count='${countId}']`);
+        if (countSpan) {
+          countSpan.textContent = count;
+        }
+      });
+      
+      // Initial count update
+      const initialCount = modelsList.querySelectorAll("input[name='models']:checked").length;
+      const countSpan = document.querySelector(`[data-models-count='${countId}']`);
+      if (countSpan) {
+        countSpan.textContent = initialCount;
+      }
+    } catch(e) {
+      modelsList.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
+    }
+};
 function createModal(modal) {
   const overlay = document.createElement("div");
   overlay.className = "cpack-overlay";
@@ -122,7 +234,9 @@ function createModal(modal) {
   };
 }
 
-async function createInputModal() {
+
+
+async function createPackModal() {
   return new Promise(async (resolve) => {
     const modal = document.createElement("div");
     modal.className = "cpack-modal";
@@ -140,7 +254,7 @@ async function createInputModal() {
       </div>
       <div class="cpack-form-item">
         <details>
-          <summary style="cursor: pointer; margin-bottom: 10px;">Models (<span id="selected-models-count">0</span> selected)</summary>
+          <summary style="cursor: pointer; margin-bottom: 10px;">Models (<span data-models-count="models-list">0</span> selected)</summary>
           <div id="models-list">
             ${spinner}
           </div>
@@ -170,106 +284,9 @@ async function createInputModal() {
     const modelsList = form.querySelector("#models-list");
     const details = form.querySelector("details");
     
-    // 定义加载模型的函数
-    const loadModels = async () => {
-      try {
-        const { workflow, output: workflow_api } = await app.graphToPrompt();
-        const resp = await api.fetchApi("/bentoml/model/query", { 
-            method: "POST",
-            body: JSON.stringify({ workflow, workflow_api }),
-            headers: { "Content-Type": "application/json" }
-          });
-          const data = await resp.json();
-          const models = Array.isArray(data) ? data : (data.models || []);
-          // Sort models by referenced status first, then by access/creation time
-          models.sort((a, b) => {
-            // First compare referenced status
-            if (a.refered && !b.refered) return -1;
-            if (!a.refered && b.refered) return 1;
-            
-            // If referenced status is the same, compare by time
-            const timeA = Math.max(a.atime || 0, a.ctime || 0);
-            const timeB = Math.max(b.atime || 0, b.ctime || 0);
-            return timeB - timeA;
-          });
-          
-          modelsList.style.cssText = `
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #444;
-            border-radius: 4px;
-            padding: 5px;
-          `;
-          
-          const now = Date.now() / 1000;
-          const ONE_DAY = 24 * 60 * 60;
-
-          const updateSelectedCount = () => {
-            const count = form.querySelectorAll("input[name='models']:checked").length;
-            form.querySelector("#selected-models-count").textContent = count;
-          };
-
-          // Add select all checkbox
-          modelsList.innerHTML = `
-            <div style="padding: 6px 0; border-bottom: 1px solid #444; margin-bottom: 5px;">
-              <label style="display: flex; align-items: center;">
-                <input type="checkbox" id="select-all-models" style="margin-right: 8px;" />
-                <span>Select All</span>
-              </label>
-            </div>
-          ` + models.map(model => {
-            const size = (model.size / (1024 * 1024)).toFixed(2); // Convert to MB
-            const path = String(model.filename || '');
-            const name = path ? path.split('/').pop() : 'Unknown'; // Get filename from path
-            
-            const isRecentlyAccessed = (now - (model.atime || 0)) < ONE_DAY;
-            
-            return `
-              <div style="padding: 6px 0; border-bottom: 1px solid #333;">
-                <label style="display: flex; align-items: flex-start;">
-                  <input type="checkbox" name="models" value="${path}" 
-                         style="margin-top: 4px;"
-                         ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
-                  <div style="margin-left: 8px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <div style="font-weight: bold;">${name}</div>
-                      ${model.size ? `<span style="background: #444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">${size} MB</span>` : ''}
-                      ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
-                      ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Mentioned in node inputs">Referenced</span>` : ''}
-                    </div>
-                    <div style="color: #888; font-size: 0.9em;">
-                      ${path}
-                    </div>
-                  </div>
-                </label>
-              </div>
-            `;
-          }).join('');
-          
-          // Add change event listeners to all checkboxes
-          modelsList.querySelectorAll("input[name='models']").forEach(checkbox => {
-            checkbox.addEventListener('change', updateSelectedCount);
-          });
-
-          // Add select all functionality
-          const selectAllCheckbox = modelsList.querySelector("#select-all-models");
-          selectAllCheckbox.addEventListener('change', (e) => {
-            const modelCheckboxes = modelsList.querySelectorAll("input[name='models']");
-            modelCheckboxes.forEach(checkbox => {
-              checkbox.checked = e.target.checked;
-            });
-            updateSelectedCount();
-          });
-          
-          // Initial count update
-          updateSelectedCount();
-        } catch(e) {
-          modelsList.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
-        }
-    };
 
     // 初始加载模型
-    loadModels();
+    loadModels(modelsList, "models-list");
     
     // details 切换时只处理样式
     details.ontoggle = (e) => {
@@ -286,14 +303,11 @@ async function createInputModal() {
 
     confirmButton.onclick = () => {
       const filename = form.querySelector("input[name='filename']").value.trim();
-      const selectedModels = Array.from(form.querySelectorAll("input[name='models']:checked"))
-        .map(input => input.value);
-      
       if (filename) {
         close();
         resolve({
           filename,
-          models: selectedModels // 移除 details.open 条件判断
+          models: modelsSelector ? modelsSelector.getSelectedModels() : []
         });
       }
     };
@@ -355,10 +369,10 @@ function createDownloadModal() {
   };
 }
 
-async function downloadPackage() {
+async function packageAction() {
   if (document.getElementById("input-modal")) return;
   if (document.getElementById("download-modal")) return;
-  const result = await createInputModal();
+  const result = await createPackModal();
   if (!result) return;
 
   const downloadModal = createDownloadModal();
@@ -395,7 +409,7 @@ async function downloadPackage() {
   }
 }
 
-async function serveBento() {
+async function serveAction() {
   if (document.getElementById("serve-modal")) return;
   const modal = document.createElement("div");
   modal.id = "serve-modal";
@@ -468,7 +482,7 @@ async function serveBento() {
   };
 }
 
-async function buildBento() {
+async function deployAction() {
   if (document.getElementById("build-modal")) return;
   if (document.getElementById("building-modal")) return;
   const data = await createBuildModal();
@@ -504,6 +518,14 @@ const buildForm = `
     <button class="cpack-btn" id="add-button" style="margin: 5px 0px">Add</button>
   </div>
 </div>
+<div class="cpack-form-item">
+  <details>
+    <summary style="cursor: pointer; margin-bottom: 10px;">Models (<span data-models-count="build-models-list">0</span> selected)</summary>
+    <div id="build-models-list">
+      ${spinner}
+    </div>
+  </details>
+</div>
 <div id="credentials-group">
   <div class="cpack-form-item">
     <label for="bentoName">BentoCloud Endpoint</label>
@@ -521,9 +543,8 @@ const buildForm = `
 
 function createBuildModal() {
   const modal = document.createElement("div");
-  modal.id = "build-modal";
+  modal.id = "build-modal"; 
   modal.className = "cpack-modal";
-  modal.style.width = "400px";
 
   const title = document.createElement("div");
   title.textContent = "Deploy Workflow to Cloud";
@@ -572,6 +593,11 @@ function createBuildModal() {
   cancelButton.onclick = close;
   return new Promise((resolve) => {
     form.querySelector("input[name='bentoName']").select();
+    
+    const details = form.querySelector("details");
+    const modelsList = form.querySelector("#build-models-list");
+    loadModels(modelsList, "build-models-list");
+
     confirmButton.onclick = async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
@@ -582,6 +608,7 @@ function createBuildModal() {
         push: true,
         api_key: formData.get("apiKey"),
         endpoint: formData.get("endpoint"),
+        models: Array.from(form.querySelectorAll("input[name='models']:checked")).map(input => input.value),
         workflow,
         workflow_api
       };
@@ -672,21 +699,14 @@ async function createServeStatusModal(url) {
   }, 1000);
 }
 
-const spinner = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
-  <path fill="currentColor" d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25"/>
-  <path fill="currentColor" d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z">
-    <animateTransform attributeName="transform" dur="0.75s" repeatCount="indefinite" type="rotate" values="0 12 12;360 12 12"/>
-  </path>
-</svg>`
 
 async function createBuildingModal(data) {
   const modal = document.createElement("div");
   modal.className = "cpack-modal";
-  modal.style.width = "400px";
   modal.id = "building-modal";
 
   const title = document.createElement("div");
-  title.textContent = "Building...";
+  title.textContent = "Pushing...";
   title.className = "cpack-title";
 
   const body = document.createElement("div");
@@ -767,17 +787,17 @@ app.registerExtension({
 
     const serveButton = document.createElement("button");
     serveButton.textContent = "Serve";
-    serveButton.onclick = serveBento;
+    serveButton.onclick = serveAction;
     menu.append(serveButton);
 
     const packButton = document.createElement("button");
     packButton.textContent = "Package";
-    packButton.onclick = downloadPackage;
+    packButton.onclick = packageAction;
     menu.append(packButton);
 
     const buildButton = document.createElement("button");
     buildButton.textContent = "Deploy";
-    buildButton.onclick = buildBento;
+    buildButton.onclick = deployAction;
     menu.append(buildButton);
 
 
@@ -788,21 +808,21 @@ app.registerExtension({
 			let cmGroup = new (await import("../../scripts/ui/components/buttonGroup.js")).ComfyButtonGroup(
 			  new(await import("../../scripts/ui/components/button.js")).ComfyButton({
 			    icon: "api",
-			    action: serveBento,
+			    action: serveAction,
 			    tooltip: "Comfy-Pack",
 			    content: "Serve",
 			    classList: "comfyui-button comfyui-menu-mobile-collapse primary"
 			  }).element,
 				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
 					icon: "package-variant-closed",
-					action: downloadPackage,
+					action: packageAction,
 					tooltip: "Comfy-Pack",
 					content: "Package",
 					classList: "comfyui-button comfyui-menu-mobile-collapse"
 				}).element,
 				new(await import("../../scripts/ui/components/button.js")).ComfyButton({
 					icon: "cloud-upload",
-					action: buildBento,
+					action: deployAction,
 					tooltip: "Comfy-Pack",
           content: "Deploy",
           classList: "comfyui-button comfyui-menu-mobile-collapse"
