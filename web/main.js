@@ -170,19 +170,24 @@ async function createInputModal() {
     const modelsList = form.querySelector("#models-list");
     const details = form.querySelector("details");
     
-    details.ontoggle = async (e) => {
-      if (details.open) {
-        try {
-          const { workflow, output: workflow_api } = await app.graphToPrompt();
-          const resp = await api.fetchApi("/bentoml/model/query", { 
+    // 定义加载模型的函数
+    const loadModels = async () => {
+      try {
+        const { workflow, output: workflow_api } = await app.graphToPrompt();
+        const resp = await api.fetchApi("/bentoml/model/query", { 
             method: "POST",
             body: JSON.stringify({ workflow, workflow_api }),
             headers: { "Content-Type": "application/json" }
           });
           const data = await resp.json();
           const models = Array.isArray(data) ? data : (data.models || []);
-          // Sort models by access time and creation time in descending order
+          // Sort models by referenced status first, then by access/creation time
           models.sort((a, b) => {
+            // First compare referenced status
+            if (a.refered && !b.refered) return -1;
+            if (!a.refered && b.refered) return 1;
+            
+            // If referenced status is the same, compare by time
             const timeA = Math.max(a.atime || 0, a.ctime || 0);
             const timeB = Math.max(b.atime || 0, b.ctime || 0);
             return timeB - timeA;
@@ -204,7 +209,15 @@ async function createInputModal() {
             form.querySelector("#selected-models-count").textContent = count;
           };
 
-          modelsList.innerHTML = models.map(model => {
+          // Add select all checkbox
+          modelsList.innerHTML = `
+            <div style="padding: 6px 0; border-bottom: 1px solid #444; margin-bottom: 5px;">
+              <label style="display: flex; align-items: center;">
+                <input type="checkbox" id="select-all-models" style="margin-right: 8px;" />
+                <span>Select All</span>
+              </label>
+            </div>
+          ` + models.map(model => {
             const size = (model.size / (1024 * 1024)).toFixed(2); // Convert to MB
             const path = String(model.filename || '');
             const name = path ? path.split('/').pop() : 'Unknown'; // Get filename from path
@@ -216,13 +229,16 @@ async function createInputModal() {
                 <label style="display: flex; align-items: flex-start;">
                   <input type="checkbox" name="models" value="${path}" 
                          style="margin-top: 4px;"
-                         ${isRecentlyAccessed ? 'checked' : ''} />
+                         ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
                   <div style="margin-left: 8px;">
-                    <div style="font-weight: bold;">${name}</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <div style="font-weight: bold;">${name}</div>
+                      ${model.size ? `<span style="background: #444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8em;">${size} MB</span>` : ''}
+                      ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
+                      ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help;" title="Mentioned in node inputs">Referenced</span>` : ''}
+                    </div>
                     <div style="color: #888; font-size: 0.9em;">
                       ${path}
-                      ${model.size ? `<span style="color: #666"> • ${size} MB</span>` : ''}
-                      ${isRecentlyAccessed ? '<span style="color: #00a67d"> • Recent</span>' : ''}
                     </div>
                   </div>
                 </label>
@@ -234,12 +250,37 @@ async function createInputModal() {
           modelsList.querySelectorAll("input[name='models']").forEach(checkbox => {
             checkbox.addEventListener('change', updateSelectedCount);
           });
+
+          // Add select all functionality
+          const selectAllCheckbox = modelsList.querySelector("#select-all-models");
+          selectAllCheckbox.addEventListener('change', (e) => {
+            const modelCheckboxes = modelsList.querySelectorAll("input[name='models']");
+            modelCheckboxes.forEach(checkbox => {
+              checkbox.checked = e.target.checked;
+            });
+            updateSelectedCount();
+          });
           
           // Initial count update
           updateSelectedCount();
         } catch(e) {
           modelsList.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
         }
+    };
+
+    // 初始加载模型
+    loadModels();
+    
+    // details 切换时只处理样式
+    details.ontoggle = (e) => {
+      if (details.open) {
+        modelsList.style.cssText = `
+          max-height: 300px;
+          overflow-y: auto;
+          border: 1px solid #444;
+          border-radius: 4px;
+          padding: 5px;
+        `;
       }
     };
 
@@ -252,7 +293,7 @@ async function createInputModal() {
         close();
         resolve({
           filename,
-          models: details.open ? selectedModels : []
+          models: selectedModels // 移除 details.open 条件判断
         });
       }
     };

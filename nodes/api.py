@@ -112,18 +112,18 @@ def _get_model_hash(file_path: Path) -> str:
         return sha
 
 
-def _is_file_used(file_path: Path, workflow_api: dict) -> bool:
+def _is_file_refered(file_path: Path, workflow_api: dict) -> bool:
     """ """
-    return False
     used_inputs = set()
     for node in workflow_api.values():
         for _, v in node["inputs"].items():
             if isinstance(v, str):
                 used_inputs.add(v)
-    return any(
-        file_path.as_posix() in node["inputs"].values()
-        for node in workflow_api.values()
-    )
+    all_inputs = "\n".join(used_inputs)
+    file_path = file_path.absolute().relative_to(folder_paths.base_path)
+    relpath = Path(*file_path.parts[2:])
+    print(f"Checking if {relpath} is refered")
+    return str(relpath) in all_inputs
 
 
 async def _get_models(
@@ -147,8 +147,6 @@ async def _get_models(
             continue
         filename = os.path.abspath(line)
         relpath = os.path.relpath(filename, folder_paths.base_path)
-        if model_filter and relpath not in model_filter:
-            continue
 
         model_data = {
             "filename": relpath,
@@ -156,6 +154,7 @@ async def _get_models(
             "size": os.path.getsize(filename),
             "atime": os.path.getatime(filename),
             "ctime": os.path.getctime(filename),
+            "disabled": relpath not in model_filter if model_filter else False,
         }
         if store_models:
             import bentoml
@@ -172,7 +171,7 @@ async def _get_models(
         models.append(model_data)
     if workflow_api:
         for model in models:
-            model["used"] = _is_file_used(model["filename"], workflow_api)
+            model["refered"] = _is_file_refered(Path(model["filename"]), workflow_api)
     return models
 
 
