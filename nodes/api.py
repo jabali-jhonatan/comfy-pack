@@ -75,29 +75,24 @@ def _is_port_in_use(port: int | str, host="localhost"):
             return True
 
 
-def _get_file_info_key(file_path: Path) -> tuple:
-    # use size and first 1KB content hash to determine if a file has changed
+def _get_file_info_key(file_path: Path) -> str:
     size = file_path.stat().st_size
-    with open(file_path, "rb") as f:
-        content_hash = hashlib.sha256(f.read(1024)).hexdigest()
-    return (size, content_hash)
+    ctime = file_path.stat().st_ctime
+    return f"{file_path.name}-{size}-{ctime}"
 
 
 def _get_model_hash(file_path: Path) -> str:
     TEMP_FOLDER.mkdir(exist_ok=True)
-    cpack_hash_cache_file = TEMP_FOLDER / "models_sha_cache.json"
+    cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache_v1.json"
     try:
         with cpack_hash_cache_file.open("r") as f:
             cache = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         cache = {}
 
-    size, content_hash = _get_file_info_key(file_path)
+    key = _get_file_info_key(file_path)
     if file_path.absolute().as_posix() in cache:
-        if (
-            cache[file_path.absolute().as_posix()]["size"] == size
-            and cache[file_path.absolute().as_posix()]["content_hash"] == content_hash
-        ):
+        if cache[file_path.absolute().as_posix()]["key"] == key:
             return cache[file_path.absolute().as_posix()]["sha256"]
 
     with cpack_hash_cache_file.open("w") as f:
@@ -108,8 +103,7 @@ def _get_model_hash(file_path: Path) -> str:
         sha = hasher.hexdigest()
         cache[file_path.absolute().as_posix()] = {
             "sha256": sha,
-            "size": size,
-            "content_hash": content_hash,
+            "key": key,
         }
         json.dump(cache, f)
         return sha
@@ -125,7 +119,6 @@ def _is_file_refered(file_path: Path, workflow_api: dict) -> bool:
     all_inputs = "\n".join(used_inputs)
     file_path = file_path.absolute().relative_to(folder_paths.base_path)
     relpath = Path(*file_path.parts[2:])
-    print(f"Checking if {relpath} is refered")
     return str(relpath) in all_inputs
 
 
@@ -133,6 +126,7 @@ async def _get_models(
     store_models: bool = False,
     workflow_api: dict | None = None,
     model_filter: set[str] | None = None,
+    sha=True,
 ) -> list:
     print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
@@ -153,12 +147,13 @@ async def _get_models(
 
         model_data = {
             "filename": relpath,
-            "sha256": _get_model_hash(Path(filename)),
             "size": os.path.getsize(filename),
             "atime": os.path.getatime(filename),
             "ctime": os.path.getctime(filename),
             "disabled": relpath not in model_filter if model_filter else False,
         }
+        if sha:
+            model_data["sha256"] = _get_model_hash(Path(filename))
         if store_models:
             import bentoml
 
@@ -497,7 +492,7 @@ async def _prepare_bento_project(
 @PromptServer.instance.routes.post("/bentoml/model/query")
 async def get_models(request):
     data = await request.json()
-    models = await _get_models(workflow_api=data.get("workflow_api"))
+    models = await _get_models(workflow_api=data.get("workflow_api"), sha=False)
     return web.json_response({"models": models})
 
 
