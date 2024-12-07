@@ -51,7 +51,7 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
     )
     stdout, _ = await proc.communicate()
     if models is None:
-        models = await _get_models(data)
+        models = await _get_models()
     with path.joinpath("snapshot.json").open("w") as f:
         data = {
             "python": f"{sys.version_info.major}.{sys.version_info.minor}",
@@ -80,7 +80,7 @@ def _get_file_info_key(file_path: Path) -> tuple:
     return (file_path.stat().st_mtime, file_path.stat().st_size)
 
 
-def _get_hash(file_path: Path) -> str:
+def _get_model_hash(file_path: Path) -> str:
     TEMP_FOLDER.mkdir(exist_ok=True)
     cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache.json"
     try:
@@ -112,7 +112,25 @@ def _get_hash(file_path: Path) -> str:
         return sha
 
 
-async def _get_models(data: dict, store_models: bool = False) -> list:
+def _is_file_used(file_path: Path, workflow_api: dict) -> bool:
+    """ """
+    return False
+    used_inputs = set()
+    for node in workflow_api.values():
+        for _, v in node["inputs"].items():
+            if isinstance(v, str):
+                used_inputs.add(v)
+    return any(
+        file_path.as_posix() in node["inputs"].values()
+        for node in workflow_api.values()
+    )
+
+
+async def _get_models(
+    store_models: bool = False,
+    workflow_api: dict | None = None,
+    model_filter: set[str] | None = None,
+) -> list:
     print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
         "git",
@@ -123,26 +141,21 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
     )
     stdout, _ = await proc.communicate()
 
-    used_inputs = set()
-    for node in data["workflow_api"].values():
-        for _, v in node["inputs"].items():
-            if isinstance(v, str):
-                used_inputs.add(v)
-
     models = []
     for line in stdout.decode().splitlines():
         if os.path.basename(line).startswith("."):
             continue
         filename = os.path.abspath(line)
         relpath = os.path.relpath(filename, folder_paths.base_path)
-
-        relpath_path = Path(relpath)
+        if model_filter and relpath not in model_filter:
+            continue
 
         model_data = {
             "filename": relpath,
-            "sha256": _get_hash(Path(filename)),
-            "explicit": relpath_path.name in used_inputs,
+            "sha256": _get_model_hash(Path(filename)),
             "size": os.path.getsize(filename),
+            "atime": os.path.getatime(filename),
+            "ctime": os.path.getctime(filename),
         }
         if store_models:
             import bentoml
@@ -157,6 +170,9 @@ async def _get_models(data: dict, store_models: bool = False) -> list:
                     shutil.copy(filename, model.path_of("model.bin"))
             model_data["model_tag"] = model_tag
         models.append(model_data)
+    if workflow_api:
+        for model in models:
+            model["used"] = _is_file_used(model["filename"], workflow_api)
     return models
 
 
@@ -246,7 +262,10 @@ async def pack_workspace(request):
 
     with zipfile.ZipFile(TEMP_FOLDER / zip_filename, "w") as zf:
         path = zipfile.Path(zf)
-        await _prepare_bento_project(path, data)
+        await _prepare_bento_project(
+            path,
+            data,
+        )
 
     return web.json_response({"download_url": f"/bentoml/download/{zip_filename}"})
 
@@ -393,7 +412,11 @@ async def _prepare_bento_project(
     data: dict,
     store_models: bool = False,
 ):
-    models = await _get_models(data, store_models=store_models)
+    model_filter = set(data.get("models", [])) or None
+    models = await _get_models(
+        store_models=store_models,
+        model_filter=model_filter,
+    )
 
     await _write_requirements(working_dir, ["comfy-cli", "fastapi"])
     await _write_snapshot(working_dir, data, models)
@@ -412,6 +435,13 @@ async def _prepare_bento_project(
                 with working_dir.joinpath(rel_path).open("wb") as f:
                     f.write(src.read_bytes())
     return models
+
+
+@PromptServer.instance.routes.post("/bentoml/model/query")
+async def get_models(request):
+    data = await request.json()
+    models = await _get_models(workflow_api=data.get("workflow_api"))
+    return web.json_response({"models": models})
 
 
 @PromptServer.instance.routes.post("/bentoml/build")

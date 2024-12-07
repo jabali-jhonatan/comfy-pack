@@ -122,20 +122,31 @@ function createModal(modal) {
   };
 }
 
-function createInputModal() {
-  return new Promise((resolve) => {
+async function createInputModal() {
+  return new Promise(async (resolve) => {
     const modal = document.createElement("div");
     modal.className = "cpack-modal";
     modal.id = "input-modal";
 
     const title = document.createElement("div");
-    title.textContent = "Package Worlflow";
+    title.textContent = "Package Workflow";
     title.className = "cpack-title";
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = "package";
-    input.className = "cpack-input";
+    const form = document.createElement("form");
+    form.innerHTML = `
+      <div class="cpack-form-item">
+        <label for="filename">Name</label>
+        <input type="text" class="cpack-input" name="filename" value="package" />
+      </div>
+      <div class="cpack-form-item">
+        <details>
+          <summary style="cursor: pointer; margin-bottom: 10px;">Advanced Options</summary>
+          <div id="models-list">
+            ${spinner}
+          </div>
+        </details>
+      </div>
+    `;
 
     const buttonContainer = document.createElement("div");
     buttonContainer.className = "cpack-btn-container";
@@ -151,16 +162,85 @@ function createInputModal() {
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(confirmButton);
     modal.appendChild(title);
-    modal.appendChild(input);
+    modal.appendChild(form);
     modal.appendChild(buttonContainer);
 
     const { close } = createModal(modal);
 
+    const modelsList = form.querySelector("#models-list");
+    const details = form.querySelector("details");
+    
+    details.ontoggle = async (e) => {
+      if (details.open) {
+        try {
+          const { workflow, output: workflow_api } = await app.graphToPrompt();
+          const resp = await api.fetchApi("/bentoml/model/query", { 
+            method: "POST",
+            body: JSON.stringify({ workflow, workflow_api }),
+            headers: { "Content-Type": "application/json" }
+          });
+          const data = await resp.json();
+          const models = Array.isArray(data) ? data : (data.models || []);
+          // Sort models by access time and creation time in descending order
+          models.sort((a, b) => {
+            const timeA = Math.max(a.atime || 0, a.ctime || 0);
+            const timeB = Math.max(b.atime || 0, b.ctime || 0);
+            return timeB - timeA;
+          });
+          
+          modelsList.style.cssText = `
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 5px;
+          `;
+          
+          const now = Date.now() / 1000;
+          const ONE_DAY = 24 * 60 * 60;
+
+          modelsList.innerHTML = models.map(model => {
+            const size = (model.size / (1024 * 1024)).toFixed(2); // Convert to MB
+            const path = String(model.filename || '');
+            const name = path ? path.split('/').pop() : 'Unknown'; // Get filename from path
+            
+            const isRecentlyAccessed = (now - (model.atime || 0)) < ONE_DAY;
+            
+            return `
+              <div style="padding: 6px 0; border-bottom: 1px solid #333;">
+                <label style="display: flex; align-items: flex-start;">
+                  <input type="checkbox" name="models" value="${path}" 
+                         style="margin-top: 4px;"
+                         ${isRecentlyAccessed ? 'checked' : ''} />
+                  <div style="margin-left: 8px;">
+                    <div style="font-weight: bold;">${name}</div>
+                    <div style="color: #888; font-size: 0.9em;">
+                      ${path}
+                      ${model.size ? `<span style="color: #666"> • ${size} MB</span>` : ''}
+                      ${isRecentlyAccessed ? '<span style="color: #00a67d"> • Recent</span>' : ''}
+                    </div>
+                  </div>
+                </label>
+              </div>
+            `;
+          }).join('');
+        } catch(e) {
+          modelsList.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
+        }
+      }
+    };
+
     confirmButton.onclick = () => {
-      const filename = input.value.trim();
+      const filename = form.querySelector("input[name='filename']").value.trim();
+      const selectedModels = Array.from(form.querySelectorAll("input[name='models']:checked"))
+        .map(input => input.value);
+      
       if (filename) {
         close();
-        resolve(filename);
+        resolve({
+          filename,
+          models: details.open ? selectedModels : []
+        });
       }
     };
 
@@ -169,13 +249,14 @@ function createInputModal() {
       resolve(null);
     };
 
-    input.addEventListener("keyup", (e) => {
+    const filenameInput = form.querySelector("input[name='filename']");
+    filenameInput.addEventListener("keyup", (e) => {
       if (e.key === "Enter") {
         confirmButton.click();
       }
     });
 
-    input.select();
+    filenameInput.select();
   });
 }
 
@@ -223,8 +304,8 @@ function createDownloadModal() {
 async function downloadPackage() {
   if (document.getElementById("input-modal")) return;
   if (document.getElementById("download-modal")) return;
-  const filename = await createInputModal();
-  if (!filename) return;
+  const result = await createInputModal();
+  if (!result) return;
 
   const downloadModal = createDownloadModal();
 
@@ -233,7 +314,11 @@ async function downloadPackage() {
     const { workflow, output: workflow_api } = await app.graphToPrompt();
 
     downloadModal.updateProgress(40);
-    const body = JSON.stringify({ workflow, workflow_api });
+    const body = JSON.stringify({ 
+      workflow, 
+      workflow_api,
+      models: result.models 
+    });
 
     downloadModal.updateProgress(60);
     const resp = await api.fetchApi("/bentoml/pack", { method: "POST", body, headers: { "Content-Type": "application/json" } });
@@ -244,7 +329,7 @@ async function downloadPackage() {
     downloadModal.updateProgress(100);
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = filename + ".cpack.zip";
+    link.download = result.filename + ".cpack.zip";
     link.click();
 
     setTimeout(() => {
