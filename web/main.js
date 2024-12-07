@@ -140,7 +140,7 @@ async function createInputModal() {
       </div>
       <div class="cpack-form-item">
         <details>
-          <summary style="cursor: pointer; margin-bottom: 10px;">Advanced Options</summary>
+          <summary style="cursor: pointer; margin-bottom: 10px;">Models (<span id="selected-models-count">0</span> selected)</summary>
           <div id="models-list">
             ${spinner}
           </div>
@@ -199,6 +199,11 @@ async function createInputModal() {
           const now = Date.now() / 1000;
           const ONE_DAY = 24 * 60 * 60;
 
+          const updateSelectedCount = () => {
+            const count = form.querySelectorAll("input[name='models']:checked").length;
+            form.querySelector("#selected-models-count").textContent = count;
+          };
+
           modelsList.innerHTML = models.map(model => {
             const size = (model.size / (1024 * 1024)).toFixed(2); // Convert to MB
             const path = String(model.filename || '');
@@ -224,6 +229,14 @@ async function createInputModal() {
               </div>
             `;
           }).join('');
+          
+          // Add change event listeners to all checkboxes
+          modelsList.querySelectorAll("input[name='models']").forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedCount);
+          });
+          
+          // Initial count update
+          updateSelectedCount();
         } catch(e) {
           modelsList.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
         }
