@@ -352,6 +352,9 @@ const serveForm = `
 `
 
 const buildForm = `
+  <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
+    This feature is powered by <a href="https://www.bentoml.com/?from=comfy-pack" target="_blank" style="color: #00a67d;">BentoCloud</a>, our managed cloud platform.
+  </p>
 <div class="cpack-form-item">
   <label for="bentoName">Service Name</label>
   <input type="text" class="cpack-input" name="bentoName" value="comfy-pack" />
@@ -362,20 +365,18 @@ const buildForm = `
     <button class="cpack-btn" id="add-button" style="margin: 5px 0px">Add</button>
   </div>
 </div>
-<div class="cpack-form-item">
-  <label for="push">Push to Cloud</label>
-  <input type="checkbox" name="push" id="push-switch" />
-</div>
-<div id="credentials-group" style="display: none">
-  <div class="cpack-form-item">
-    <label for="bentoName">BentoCloud API Key</label>
-    <input type="password" class="cpack-input" name="apiKey" />
-  </div>
+<div id="credentials-group">
   <div class="cpack-form-item">
     <label for="bentoName">BentoCloud Endpoint</label>
     <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" />
   </div>
-  <p style="font-size: 0.85em;">Leave these empty to use the credentials stored in local machine</p>
+  <div class="cpack-form-item">
+    <label for="bentoName">BentoCloud API Key</label>
+    <input type="password" class="cpack-input" name="apiKey" />
+    <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
+      Get your API credentials at <a href="https://cloud.bentoml.com/signup?from=comfy-pack" target="_blank" style="color: #00a67d;">cloud.bentoml.com</a>
+    </p>
+  </div>
 </div>
 `
 
@@ -409,17 +410,12 @@ function createBuildModal() {
     }
   });
 
-  const pushSwitch = form.querySelector("#push-switch");
-  const credentialsGroup = form.querySelector("#credentials-group");
-  pushSwitch.addEventListener("change", (e) => {
-    credentialsGroup.style.display = e.target.checked ? "block" : "none";
-  });
-
+  
   const buttonContainer = document.createElement("div");
   buttonContainer.className = "cpack-btn-container";
 
   const confirmButton = document.createElement("button");
-  confirmButton.textContent = "Build";
+  confirmButton.textContent = "Push";
   confirmButton.className = "cpack-btn primary";
 
   const cancelButton = document.createElement("button");
@@ -444,7 +440,7 @@ function createBuildModal() {
       const data = {
         bento_name: formData.get("bentoName"),
         system_packages: Array.from(formData.getAll("systemPackages").filter(Boolean)),
-        push: formData.get("push") === "on",
+        push: true,
         api_key: formData.get("apiKey"),
         endpoint: formData.get("endpoint"),
         workflow,

@@ -401,6 +401,7 @@ async def _prepare_bento_project(
                 rel_path = src.relative_to(COMFY_PACK_DIR.parent)
                 with working_dir.joinpath(rel_path).open("wb") as f:
                     f.write(src.read_bytes())
+    return models
 
 
 @PromptServer.instance.routes.post("/bentoml/build")
@@ -420,7 +421,7 @@ async def build_bento(request):
 
     with tempfile.TemporaryDirectory(suffix="-bento", prefix="comfy-pack-") as temp_dir:
         temp_dir_path = Path(temp_dir)
-        await _prepare_bento_project(temp_dir_path, data, store_models=True)
+        models = await _prepare_bento_project(temp_dir_path, data, store_models=True)
 
         # create a bento
         try:
