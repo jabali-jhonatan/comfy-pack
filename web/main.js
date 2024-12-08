@@ -250,7 +250,7 @@ async function createPackModal() {
     form.innerHTML = `
       <div class="cpack-form-item">
         <label for="filename">Name</label>
-        <input type="text" class="cpack-input" name="filename" value="comfy-pack-pkg" />
+        <input type="text" class="cpack-input" name="filename" value="${localStorage.getItem('cpack-bento-name') || 'comfy-pack-pkg'}" />
       </div>
       <div class="cpack-form-item">
         <details>
@@ -266,7 +266,7 @@ async function createPackModal() {
     buttonContainer.className = "cpack-btn-container";
 
     const confirmButton = document.createElement("button");
-    confirmButton.textContent = "Confirm";
+    confirmButton.textContent = "Pack";
     confirmButton.className = "cpack-btn primary";
 
     const cancelButton = document.createElement("button");
@@ -304,6 +304,8 @@ async function createPackModal() {
     confirmButton.onclick = () => {
       const filename = form.querySelector("input[name='filename']").value.trim();
       if (filename) {
+        // Save filename to localStorage
+        localStorage.setItem('cpack-bento-name', filename);
         close();
         resolve({
           filename,
@@ -506,17 +508,11 @@ const serveForm = `
 
 const buildForm = `
   <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
-    This feature is powered by <a href="https://www.bentoml.com/?from=comfy-pack" target="_blank" style="color: #00a67d;">BentoCloud</a>, our managed cloud platform.
+    This feature is powered by <a href="https://www.bentoml.com/?from=comfy-pack" target="_blank" style="color: #00a67d;">BentoCloud</a>, a platform for deploying <br>and managing ML services in customizable clusters
   </p>
 <div class="cpack-form-item">
   <label for="bentoName">Service Name</label>
-  <input type="text" class="cpack-input" name="bentoName" value="comfy-pack-app" />
-</div>
-<div class="cpack-form-item">
-  <label for="systemPackages">System Packages</label>
-  <div id="system-packages-array">
-    <button class="cpack-btn" id="add-button" style="margin: 5px 0px">Add</button>
-  </div>
+  <input type="text" class="cpack-input" name="bentoName" value="${localStorage.getItem('cpack-bento-name') || 'comfy-pack-app'}" />
 </div>
 <div class="cpack-form-item">
   <details>
@@ -527,13 +523,21 @@ const buildForm = `
   </details>
 </div>
 <div class="cpack-form-item">
-  <label>BentoCloud API Token</label>
+  <label for="systemPackages">System Packages</label>
+  <div id="system-packages-array">
+    <button class="cpack-btn" id="add-button" style="margin: 5px 0px">Add</button>
+  </div>
+</div>
+<div class="cpack-form-item">
+  <label>BentoCloud API<span style="color: #ff8383">*</span></label>
   <div id="credentials-group" style="margin-top: 10px;">
     <div class="cpack-form-item">
-      <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" />
+      <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" value="${localStorage.getItem('cpack-endpoint') || ''}" required />
+      <div class="error-message" style="color: #ff8383; margin-top: 5px; display: none">Endpoint is required</div>
     </div>
     <div class="cpack-form-item">
-      <input type="password" class="cpack-input" name="apiKey" placeholder="cta8..." />
+      <input type="password" class="cpack-input" name="apiKey" placeholder="<your_token>" value="${localStorage.getItem('cpack-api-key') || ''}" required />
+      <div class="error-message" style="color: #ff8383; margin-top: 5px; display: none">API Key is required</div>
     </div>
       <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
         Get your API Token at <a href="https://cloud.bentoml.com/signup?from=comfy-pack" target="_blank" style="color: #00a67d;">cloud.bentoml.com</a>
@@ -561,7 +565,7 @@ function createBuildModal() {
     const row = document.createElement("div");
     row.className = "cpack-input-row";
     row.innerHTML = `
-      <div style="flex: 1"><input type="text" class="cpack-input" name="systemPackages" /></div>
+      <div style="flex: 1"><input type="text" class="cpack-input" name="systemPackages" placeholder="package name in Ubuntu" /></div>
       <button class="cpack-btn" style="margin-left: 10px">Remove</button>
     `
     systemPackagesArray.appendChild(row);
@@ -576,11 +580,13 @@ function createBuildModal() {
   buttonContainer.className = "cpack-btn-container";
 
   const confirmButton = document.createElement("button");
-  confirmButton.textContent = "Push";
+  confirmButton.innerHTML = `Push to Cloud`;
   confirmButton.className = "cpack-btn primary";
+  confirmButton.style.fontWeight = "bold";
 
   const cancelButton = document.createElement("button");
   cancelButton.textContent = "Cancel";
+  cancelButton.className = "cpack-btn";
   cancelButton.className = "cpack-btn";
 
   buttonContainer.appendChild(cancelButton);
@@ -602,13 +608,40 @@ function createBuildModal() {
     confirmButton.onclick = async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
+      const bentoName = formData.get("bentoName");
+      const endpoint = formData.get("endpoint");
+      const apiKey = formData.get("apiKey");
+
+      // Reset error messages
+      form.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+      
+      // Validate required fields
+      let hasError = false;
+      if (!endpoint.trim()) {
+        form.querySelector('input[name="endpoint"]').nextElementSibling.style.display = 'block';
+        hasError = true;
+      }
+      if (!apiKey.trim()) {
+        form.querySelector('input[name="apiKey"]').nextElementSibling.style.display = 'block';
+        hasError = true;
+      }
+      
+      if (hasError) {
+        return;
+      }
+      
+      // Save values to localStorage
+      localStorage.setItem('cpack-bento-name', bentoName);
+      localStorage.setItem('cpack-endpoint', endpoint);
+      localStorage.setItem('cpack-api-key', apiKey);
+      
       const { workflow, output: workflow_api } = await app.graphToPrompt();
       const data = {
-        bento_name: formData.get("bentoName"),
+        bento_name: bentoName,
         system_packages: Array.from(formData.getAll("systemPackages").filter(Boolean)),
         push: true,
-        api_key: formData.get("apiKey"),
-        endpoint: formData.get("endpoint"),
+        api_key: apiKey,
+        endpoint: endpoint,
         models: Array.from(form.querySelectorAll("input[name='models']:checked")).map(input => input.value),
         workflow,
         workflow_api
@@ -751,19 +784,56 @@ async function createBuildingModal(data) {
     if (respData.error) {
       setError(respData.error);
     } else {
-      title.textContent = "Build Completed";
-      info.innerHTML = `<div class="cpack-copyable"><span style="flex:1">${respData.bento}</span><button class="cpack-btn"><i class="mdi mdi-content-copy" /></button></div>`;
-      const copyButton = info.querySelector("button");
-      copyButton.onclick = () => {
-        navigator.clipboard.writeText(respData.bento);
-        const icon = copyButton.querySelector("i");
-        icon.classList.remove("mdi-content-copy");
-        icon.classList.add("mdi-check");
-        setTimeout(() => {
-          icon.classList.remove("mdi-check");
-          icon.classList.add("mdi-content-copy");
-        }, 2000);
-      }
+      title.textContent = "Push Completed";
+      // Extract org name from endpoint
+      const endpointUrl = new URL(data.endpoint);
+      const org = endpointUrl.host.split('.')[0];
+      
+      // Extract bento repo and version from bento tag
+      const [repoName, version] = respData.bento.split(':');
+      
+      // Construct status URL
+      const statusUrl = `https://status-ci.cloud.bentoml.com/bento_repositories/${repoName}/bentos/${version}`;
+      
+      info.innerHTML = `
+        <div style="text-align: center; padding: 20px 0;">
+          <div style="font-size: 48px; margin-bottom: 15px;">✨</div>
+          <div style="color: #888; margin-bottom: 20px">
+            Your workflow has been pushed to BentoCloud and is ready for deployment
+          </div>
+          
+          <div style="background: #1d1d1d; padding: 15px; border-radius: 8px; margin-bottom: 20px">
+            <div class="cpack-copyable">
+              <span>${repoName}:${version}</span>
+              <a href="${statusUrl}" target="_blank" 
+                 style="background: #00a67d; color: white; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font-size: 0.9em" 
+                 title="View pushed Bento">
+                <span>Deploy Now</span>
+                <svg style="width:16px;height:16px" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: center; gap: 10px">
+            <a href="https://docs.bentoml.com/en/latest/scale-with-bentocloud/deployment/index.html?from=comfy-pack" target="_blank" 
+               style="color:#00a67d; text-decoration:none; display:flex; align-items:center; gap:5px">
+              <span>Deployment Guide</span>
+              <svg style="width:16px;height:16px" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
+              </svg>
+            </a>
+            <a href="https://cloud.bentoml.com" target="_blank"
+               style="color:#00a67d; text-decoration:none; display:flex; align-items:center; gap:5px">
+              <span>BentoCloud Console Home</span>
+              <svg style="width:16px;height:16px" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      `;
     }
   } catch(e) {
     setError(e.message);

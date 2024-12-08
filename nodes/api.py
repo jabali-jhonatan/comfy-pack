@@ -150,7 +150,9 @@ async def _get_models(
             "size": os.path.getsize(filename),
             "atime": os.path.getatime(filename),
             "ctime": os.path.getctime(filename),
-            "disabled": relpath not in model_filter if model_filter else False,
+            "disabled": relpath not in model_filter
+            if model_filter is not None
+            else False,
         }
         if sha:
             model_data["sha256"] = _get_model_hash(Path(filename))
@@ -463,7 +465,7 @@ async def _prepare_bento_project(
     data: dict,
     store_models: bool = False,
 ):
-    model_filter = set(data.get("models", [])) or None
+    model_filter = set(data.get("models", []))
     models = await _get_models(
         store_models=store_models,
         model_filter=model_filter,
