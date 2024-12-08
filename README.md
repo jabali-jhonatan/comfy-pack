@@ -15,9 +15,11 @@ A comprehensive toolkit for standardizing, packaging and deploying ComfyUI workf
 pip install comfy-pack
 ```
 
+
+
 ### Create a Pack
-1. Install ComfyPack custom nodes in ComfyUI
-2. Design your workflow with parameter nodes
+1. Search&Install ComfyUI-IDL custom nodes in ComfyUI with Manager
+2. Design your workflow with comfy-pack input/output nodes
 3. Click "Package" button to create `.cpack.zip`
 
 ### Restore to a ComfyUI project
@@ -35,8 +37,8 @@ comfy-pack info workflow.cpack.zip
 comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4 
 ```
 
-### Online REST service
-under development
+### Develop REST service
+![serve](https://github.com/user-attachments/assets/57b5ff75-6109-4f06-99a2-778942030236)
 
 ## Parameter Nodes
 
