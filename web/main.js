@@ -114,111 +114,138 @@ const style = `
 }
 `
 
-async function loadModels(modelsList, countId) {
-  try {
-    const { workflow, output: workflow_api } = await app.graphToPrompt();
-    const resp = await api.fetchApi("/bentoml/model/query", { 
+class ModelList {
+  constructor(container, countId) {
+    this.container = container;
+    this.countId = countId;
+    this.init();
+  }
+
+  init() {
+    this.container.style.cssText = `
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 5px;
+    `;
+    this.load();
+  }
+
+  async load() {
+    try {
+      const { workflow, output: workflow_api } = await app.graphToPrompt();
+      const resp = await api.fetchApi("/bentoml/model/query", { 
         method: "POST",
         body: JSON.stringify({ workflow, workflow_api }),
         headers: { "Content-Type": "application/json" }
       });
       const data = await resp.json();
       const models = Array.isArray(data) ? data : (data.models || []);
-      // Sort models by referenced status first, then by access/creation time
-      models.sort((a, b) => {
-        // First compare referenced status
-        if (a.refered && !b.refered) return -1;
-        if (!a.refered && b.refered) return 1;
-        
-        // If referenced status is the same, compare by time
-        const timeA = Math.max(a.atime || 0, a.ctime || 0);
-        const timeB = Math.max(b.atime || 0, b.ctime || 0);
-        return timeB - timeA;
-      });
-      
-      modelsList.style.cssText = `
-        max-height: 300px;
-        overflow-y: auto;
-        border: 1px solid #444;
-        border-radius: 4px;
-        padding: 5px;
-      `;
-      
-      const now = Date.now() / 1000;
-      const ONE_DAY = 24 * 60 * 60;
-
-      // Add select all checkbox
-      modelsList.innerHTML = `
-        <div style="padding: 6px 0; border-bottom: 1px solid #444; margin-bottom: 5px;">
-          <label style="display: flex; align-items: center;">
-            <input type="checkbox" id="select-all-models" style="margin-right: 8px;" />
-            <span>Select All</span>
-          </label>
-        </div>
-      ` + models.map(model => {
-        const size = (model.size / (1024 * 1024)).toFixed(2); // Convert to MB
-        const path = String(model.filename || '');
-        const name = path ? path.split('/').pop() : 'Unknown'; // Get filename from path
-        
-        const isRecentlyAccessed = (now - (model.atime || 0)) < ONE_DAY;
-        
-        return `
-          <div style="padding: 6px 0; border-bottom: 1px solid #333;">
-            <label style="display: flex; align-items: flex-start;">
-              <input type="checkbox" name="models" value="${path}" 
-                     style="margin-top: 4px;"
-                     ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
-              <div style="margin-left: 8px;">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
-                <div style="font-weight: bold; white-space: nowrap;">${name}</div>
-                ${model.size ? `<span style="background: #444; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; white-space: nowrap;">${size} MB</span>` : ''}
-                ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help; white-space: nowrap;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
-                ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help; white-space: nowrap;" title="Mentioned in node inputs">Referenced</span>` : ''}
-              </div>
-                <div style="color: #888; font-size: 0.9em;">
-                  ${path}
-                </div>
-              </div>
-            </label>
-          </div>
-        `;
-      }).join('');
-      
-      // Add change event listeners to all checkboxes
-      modelsList.querySelectorAll("input[name='models']").forEach(checkbox => {
-        checkbox.addEventListener('change', () => {
-          const count = modelsList.querySelectorAll("input[name='models']:checked").length;
-          const countSpan = document.querySelector(`[data-models-count='${countId}']`);
-          if (countSpan) {
-            countSpan.textContent = count;
-          }
-        });
-      });
-
-      // Add select all functionality
-      const selectAllCheckbox = modelsList.querySelector("#select-all-models");
-      selectAllCheckbox.addEventListener('change', (e) => {
-        const modelCheckboxes = modelsList.querySelectorAll("input[name='models']");
-        modelCheckboxes.forEach(checkbox => {
-          checkbox.checked = e.target.checked;
-        });
-        const count = modelsList.querySelectorAll("input[name='models']:checked").length;
-        const countSpan = document.querySelector(`[data-models-count='${countId}']`);
-        if (countSpan) {
-          countSpan.textContent = count;
-        }
-      });
-      
-      // Initial count update
-      const initialCount = modelsList.querySelectorAll("input[name='models']:checked").length;
-      const countSpan = document.querySelector(`[data-models-count='${countId}']`);
-      if (countSpan) {
-        countSpan.textContent = initialCount;
-      }
+      this.renderModels(this.sortModels(models));
     } catch(e) {
-      modelsList.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
+      this.container.innerHTML = `<div style="color: #ff8383">Failed to load models: ${e.message}</div>`;
     }
-};
+  }
+
+  sortModels(models) {
+    return models.sort((a, b) => {
+      if (a.refered && !b.refered) return -1;
+      if (!a.refered && b.refered) return 1;
+      const timeA = Math.max(a.atime || 0, a.ctime || 0);
+      const timeB = Math.max(b.atime || 0, b.ctime || 0);
+      return timeB - timeA;
+    });
+  }
+
+  renderModels(models) {
+    const now = Date.now() / 1000;
+    const ONE_DAY = 24 * 60 * 60;
+
+    this.container.innerHTML = this.getSelectAllHtml() + 
+      models.map(model => this.getModelItemHtml(model, now, ONE_DAY)).join('');
+
+    this.setupEventListeners();
+    this.updateCount();
+  }
+
+  getSelectAllHtml() {
+    return `
+      <div style="padding: 6px 0; border-bottom: 1px solid #444; margin-bottom: 5px;">
+        <label style="display: flex; align-items: center;">
+          <input type="checkbox" id="select-all-models" style="margin-right: 8px;" />
+          <span>Select All</span>
+        </label>
+      </div>
+    `;
+  }
+
+  getModelItemHtml(model, now, ONE_DAY) {
+    const size = (model.size / (1024 * 1024)).toFixed(2);
+    const path = String(model.filename || '');
+    const name = path ? path.split('/').pop() : 'Unknown';
+    const isRecentlyAccessed = (now - (model.atime || 0)) < ONE_DAY;
+
+    return `
+      <div style="padding: 6px 0; border-bottom: 1px solid #333;">
+        <label style="display: flex; align-items: flex-start;">
+          <input type="checkbox" name="models" value="${path}" 
+                 style="margin-top: 4px;"
+                 ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
+          <div style="margin-left: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
+              <div style="font-weight: bold; white-space: nowrap;">${name}</div>
+              ${isRecentlyAccessed ? `<span style="background: #00a67d33; color: #00a67d; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help; white-space: nowrap;" title="Accessed in ${Math.round((now - (model.atime || 0)) / 3600)} hours">Recent</span>` : ''}
+              ${model.refered ? `<span style="background: #a67d0033; color: #a67d00; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; cursor: help; white-space: nowrap;" title="Mentioned in node inputs">Referenced</span>` : ''}
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+              <div style="color: #888; font-size: 0.9em; flex: 1; overflow-x: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
+                <span style="background: #333; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                  <svg style="width: 14px; height: 14px; min-width: 14px;" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M6,2H18A2,2 0 0,1 20,4V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2M12,4A6,6 0 0,0 6,10C6,13.31 8.69,16 12.1,16L11.22,13.77C10.95,13.29 11.11,12.68 11.59,12.4L12.45,11.9C12.93,11.63 13.54,11.79 13.82,12.27L15.74,14.69C17.12,13.59 18,11.9 18,10A6,6 0 0,0 12,4M12,9A1,1 0 0,1 13,10A1,1 0 0,1 12,11A1,1 0 0,1 11,10A1,1 0 0,1 12,9M7,18A1,1 0 0,0 6,19A1,1 0 0,0 7,20A1,1 0 0,0 8,19A1,1 0 0,0 7,18M12.09,13.27L14.58,19.58L17.17,18.08L12.95,12.77L12.09,13.27Z" />
+                  </svg>
+                  ${model.size ? `${size} MB` : 'Unknown size'}
+                </span>
+                <span style="overflow: hidden; text-overflow: ellipsis;" title="${path}">${path.substring(0, path.lastIndexOf('/') + 1)}</span>
+              </div>
+            </div>
+          </div>
+        </label>
+      </div>
+    `;
+  }
+
+  setupEventListeners() {
+    this.container.querySelectorAll("input[name='models']").forEach(checkbox => {
+      checkbox.addEventListener('change', () => this.updateCount());
+    });
+
+    const selectAllCheckbox = this.container.querySelector("#select-all-models");
+    selectAllCheckbox?.addEventListener('change', (e) => {
+      this.container.querySelectorAll("input[name='models']").forEach(checkbox => {
+        checkbox.checked = e.target.checked;
+      });
+      this.updateCount();
+    });
+  }
+
+  updateCount() {
+    const count = this.container.querySelectorAll("input[name='models']:checked").length;
+    const countSpan = document.querySelector(`[data-models-count='${this.countId}']`);
+    if (countSpan) {
+      countSpan.textContent = count;
+    }
+  }
+
+  getSelectedModels() {
+    return Array.from(this.container.querySelectorAll("input[name='models']:checked"))
+      .map(input => input.value);
+  }
+}
+
+async function loadModels(modelsList, countId) {
+  new ModelList(modelsList, countId);
+}
 function createModal(modal) {
   const overlay = document.createElement("div");
   overlay.className = "cpack-overlay";
@@ -283,23 +310,7 @@ async function createPackModal() {
 
     const modelsList = form.querySelector("#models-list");
     const details = form.querySelector("details");
-    
-
-    // 初始加载模型
-    loadModels(modelsList, "models-list");
-    
-    // details 切换时只处理样式
-    details.ontoggle = (e) => {
-      if (details.open) {
-        modelsList.style.cssText = `
-          max-height: 300px;
-          overflow-y: auto;
-          border: 1px solid #444;
-          border-radius: 4px;
-          padding: 5px;
-        `;
-      }
-    };
+    const modelListComponent = new ModelList(modelsList, "models-list");
 
     confirmButton.onclick = () => {
       const filename = form.querySelector("input[name='filename']").value.trim();
@@ -603,7 +614,7 @@ function createBuildModal() {
     
     const details = form.querySelector("details");
     const modelsList = form.querySelector("#build-models-list");
-    loadModels(modelsList, "build-models-list");
+    const modelListComponent = new ModelList(modelsList, "build-models-list");
 
     confirmButton.onclick = async (e) => {
       e.preventDefault();
