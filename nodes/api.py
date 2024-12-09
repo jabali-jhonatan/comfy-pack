@@ -52,7 +52,7 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
     )
     stdout, _ = await proc.communicate()
     if models is None:
-        models = await _get_models(source=True)
+        models = await _get_models()
     with path.joinpath("snapshot.json").open("w") as f:
         data = {
             "python": f"{sys.version_info.major}.{sys.version_info.minor}",
@@ -93,8 +93,8 @@ async def _get_models(
     store_models: bool = False,
     workflow_api: dict | None = None,
     model_filter: set[str] | None = None,
-    sha=True,
-    source=True,
+    ensure_sha=True,
+    ensure_source=True,
 ) -> list:
     print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
@@ -112,10 +112,10 @@ async def _get_models(
         for line in stdout.decode().splitlines()
         if not os.path.basename(line).startswith(".")
     ]
-    if sha or store_models:
-        model_hashes = await async_batch_get_sha256(model_filenames)
-    else:
-        model_hashes = {}
+    model_hashes = await async_batch_get_sha256(
+        model_filenames,
+        cache_only=not (ensure_sha or store_models),
+    )
 
     for filename in model_filenames:
         relpath = os.path.relpath(filename, folder_paths.base_path)
@@ -131,10 +131,10 @@ async def _get_models(
             "sha256": model_hashes.get(filename),
         }
 
-        if source:
-            if not sha:
-                raise ValueError("sha must be True if source is True")
-            model_data["source"] = await alookup_model_source(model_data["sha256"])
+        model_data["source"] = await alookup_model_source(
+            model_data["sha256"],
+            cache_only=not ensure_source,
+        )
 
         if store_models:
             import bentoml
@@ -476,8 +476,8 @@ async def get_models(request):
     data = await request.json()
     models = await _get_models(
         workflow_api=data.get("workflow_api"),
-        sha=False,
-        source=False,
+        ensure_sha=False,
+        ensure_source=False,
     )
     return web.json_response({"models": models})
 

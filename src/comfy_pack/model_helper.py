@@ -130,6 +130,8 @@ async def _loopup_civitai_model(model_sha: str) -> dict:
 
 
 async def alookup_model_source(model_sha: str, cache_only=False) -> dict:
+    if not model_sha:
+        return {}
     try:
         model_source_cache = json.loads(MODEL_SOURCE_CACHE_FILE.read_text())
     except Exception:

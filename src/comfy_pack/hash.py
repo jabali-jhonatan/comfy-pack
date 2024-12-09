@@ -4,7 +4,6 @@ import asyncio
 import sys
 from typing import Dict, List
 from datetime import datetime
-import fcntl
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from .const import SHA_CACHE_FILE
@@ -46,11 +45,14 @@ def async_get_sha256(filepath: str) -> str:
     return asyncio.run(async_batch_get_sha256([filepath]))[filepath]
 
 
-def batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
-    return asyncio.run(async_batch_get_sha256(filepaths))
+def batch_get_sha256(filepaths: List[str], cache_only: bool = False) -> Dict[str, str]:
+    return asyncio.run(async_batch_get_sha256(filepaths, cache_only=cache_only))
 
 
-async def async_batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
+async def async_batch_get_sha256(
+    filepaths: List[str],
+    cache_only: bool = False,
+) -> Dict[str, str]:
     # Load cache
     cache = {}
     if SHA_CACHE_FILE.exists():
@@ -65,6 +67,7 @@ async def async_batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
 
     # Process files
     results = {}
+    new_cache = {}
     async with asyncio.Lock():
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             loop = asyncio.get_event_loop()
@@ -89,12 +92,16 @@ async def async_batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
                         results[filepath] = cache_entry["sha256"]
                         continue
 
+                    if cache_only:
+                        results[filepath] = ""
+                        continue
+
                 # Calculate new SHA
                 calc_func = partial(calculate_sha256_worker, filepath)
                 sha256 = await loop.run_in_executor(pool, calc_func)
 
                 # Update cache and results
-                cache[filepath] = {
+                new_cache[filepath] = {
                     "sha256": sha256,
                     "size": current_size,
                     "birthtime": current_time,
@@ -104,12 +111,11 @@ async def async_batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
 
     # Save cache
     try:
+        with SHA_CACHE_FILE.open("r") as f:
+            cache = json.load(f)
+        cache.update(new_cache)
         with SHA_CACHE_FILE.open("w") as f:
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
-                json.dump(cache, f, indent=2)
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            json.dump(cache, f, indent=2)
     except (IOError, OSError):
         pass
 
