@@ -56,7 +56,6 @@ async def _loopup_civitai_model(model_sha: str) -> dict:
             headers={
                 "accept": "*/*",
                 "accept-language": "en,zh;q=0.9,zh-CN;q=0.8",
-                "authorization": "Bearer 102312c2b83ea0ef9ac32e7858f742721bbfd7319a957272e746f84fd1e974af",
                 "cache-control": "no-cache",
                 "content-type": "application/json",
                 "origin": "https://civitai.com",
@@ -130,7 +129,7 @@ async def _loopup_civitai_model(model_sha: str) -> dict:
             }
 
 
-async def alookup_model_source(model_sha: str) -> dict:
+async def alookup_model_source(model_sha: str, cache_only=False) -> dict:
     try:
         model_source_cache = json.loads(MODEL_SOURCE_CACHE_FILE.read_text())
     except Exception:
@@ -139,6 +138,8 @@ async def alookup_model_source(model_sha: str) -> dict:
         model_source_cache = {}
     if model_source_cache.get(model_sha):
         return model_source_cache[model_sha]
+    if cache_only:
+        return {}
 
     info = await _lookup_huggingface_model(model_sha)
     if not info:
@@ -153,5 +154,5 @@ async def alookup_model_source(model_sha: str) -> dict:
     return info
 
 
-def lookup_model_source(model_sha: str) -> dict:
-    return asyncio.run(alookup_model_source(model_sha))
+def lookup_model_source(model_sha: str, cache_only=False) -> dict:
+    return asyncio.run(alookup_model_source(model_sha, cache_only=cache_only))
