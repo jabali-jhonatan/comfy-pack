@@ -124,7 +124,6 @@ class ComfyUIServer:
             command.extend(["--input-directory", self.input_dir])
         if subprocess.run(command, check=True, stdout=stdout):
             _probe_comfyui_server(self.port)
-            breakpoint()
             logger.info("Successfully started ComfyUI in the background")
             self.server_running = True
         else:
