@@ -18,6 +18,7 @@ import folder_paths
 from aiohttp import web
 from server import PromptServer
 from comfy_pack.hash import async_batch_get_sha256
+from comfy_pack.model_helper import alookup_model_source
 
 ZPath = Union[Path, zipfile.Path]
 TEMP_FOLDER = Path(__file__).parent.parent / "temp"
@@ -51,7 +52,7 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
     )
     stdout, _ = await proc.communicate()
     if models is None:
-        models = await _get_models()
+        models = await _get_models(source=True)
     with path.joinpath("snapshot.json").open("w") as f:
         data = {
             "python": f"{sys.version_info.major}.{sys.version_info.minor}",
@@ -93,6 +94,7 @@ async def _get_models(
     workflow_api: dict | None = None,
     model_filter: set[str] | None = None,
     sha=True,
+    source=True,
 ) -> list:
     print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
@@ -128,6 +130,11 @@ async def _get_models(
             else False,
             "sha256": model_hashes.get(filename),
         }
+
+        if source:
+            if not sha:
+                raise ValueError("sha must be True if source is True")
+            model_data["source"] = await alookup_model_source(model_data["sha256"])
 
         if store_models:
             import bentoml
@@ -467,7 +474,11 @@ async def _prepare_bento_project(
 @PromptServer.instance.routes.post("/bentoml/model/query")
 async def get_models(request):
     data = await request.json()
-    models = await _get_models(workflow_api=data.get("workflow_api"), sha=False)
+    models = await _get_models(
+        workflow_api=data.get("workflow_api"),
+        sha=False,
+        source=False,
+    )
     return web.json_response({"models": models})
 
 

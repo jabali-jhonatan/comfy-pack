@@ -1,3 +1,4 @@
 bentoml
 fastapi
 comfy-cli
+googlesearch-python
