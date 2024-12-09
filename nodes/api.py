@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import socket
 import asyncio
-import hashlib
 import json
 import os
 import shutil
@@ -18,6 +17,7 @@ from typing import Union, Any
 import folder_paths
 from aiohttp import web
 from server import PromptServer
+from comfy_pack.hash import async_batch_get_sha256
 
 ZPath = Union[Path, zipfile.Path]
 TEMP_FOLDER = Path(__file__).parent.parent / "temp"
@@ -75,40 +75,6 @@ def _is_port_in_use(port: int | str, host="localhost"):
             return True
 
 
-def _get_file_info_key(file_path: Path) -> str:
-    size = file_path.stat().st_size
-    ctime = file_path.stat().st_ctime
-    return f"{file_path.name}-{size}-{ctime}"
-
-
-def _get_model_hash(file_path: Path) -> str:
-    TEMP_FOLDER.mkdir(exist_ok=True)
-    cpack_hash_cache_file = TEMP_FOLDER / "model_sha_cache_v1.json"
-    try:
-        with cpack_hash_cache_file.open("r") as f:
-            cache = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        cache = {}
-
-    key = _get_file_info_key(file_path)
-    if file_path.absolute().as_posix() in cache:
-        if cache[file_path.absolute().as_posix()]["key"] == key:
-            return cache[file_path.absolute().as_posix()]["sha256"]
-
-    with cpack_hash_cache_file.open("w") as f:
-        hasher = hashlib.sha256()
-        with open(file_path, "rb") as file:
-            for chunk in iter(lambda: file.read(4096), b""):
-                hasher.update(chunk)
-        sha = hasher.hexdigest()
-        cache[file_path.absolute().as_posix()] = {
-            "sha256": sha,
-            "key": key,
-        }
-        json.dump(cache, f)
-        return sha
-
-
 def _is_file_refered(file_path: Path, workflow_api: dict) -> bool:
     """ """
     used_inputs = set()
@@ -139,10 +105,17 @@ async def _get_models(
     stdout, _ = await proc.communicate()
 
     models = []
-    for line in stdout.decode().splitlines():
-        if os.path.basename(line).startswith("."):
-            continue
-        filename = os.path.abspath(line)
+    model_filenames = [
+        os.path.abspath(line)
+        for line in stdout.decode().splitlines()
+        if not os.path.basename(line).startswith(".")
+    ]
+    if sha or store_models:
+        model_hashes = await async_batch_get_sha256(model_filenames)
+    else:
+        model_hashes = {}
+
+    for filename in model_filenames:
         relpath = os.path.relpath(filename, folder_paths.base_path)
 
         model_data = {
@@ -153,9 +126,9 @@ async def _get_models(
             "disabled": relpath not in model_filter
             if model_filter is not None
             else False,
+            "sha256": model_hashes.get(filename),
         }
-        if sha:
-            model_data["sha256"] = _get_model_hash(Path(filename))
+
         if store_models:
             import bentoml
 

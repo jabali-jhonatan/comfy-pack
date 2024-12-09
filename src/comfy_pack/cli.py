@@ -1,10 +1,11 @@
 import click
-import hashlib
 import functools
 import json
 from pathlib import Path
 import shutil
 import tempfile
+from .const import WORKSPACE_DIR
+from .hash import get_sha256
 
 
 @click.group()
@@ -110,10 +111,8 @@ def info_cmd(ctx, cpack: str):
 
 @functools.lru_cache
 def _get_cache_workspace(cpack: str):
-    m = hashlib.sha256()
-    with open(cpack, "rb") as f:
-        m.update(f.read())
-    return Path.home() / ".comfypack" / "workspace" / m.hexdigest()[0:8]
+    sha = get_sha256(cpack)
+    return WORKSPACE_DIR / sha[0:8]
 
 
 @main.command(
