@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import urllib.parse
 import subprocess
 import sys
 import tempfile
@@ -160,13 +161,13 @@ def install_dependencies(
     return venv_py
 
 
-def get_google_search_url(sha: str) -> tuple[str, str]:
+def get_google_search_url(sha: str) -> str:
     """Generate Google custom search URLs for model on HuggingFace and CivitAI"""
     base_url = "https://www.google.com/search"
     sha = sha.upper()
-    hf_query = f"site:huggingface.co {sha}"
-    civit_query = f"site:civitai.com {sha}"
-    return (f"{base_url}?q={hf_query}", f"{base_url}?q={civit_query}")
+    hf_query = f"{sha} OR {sha[:10]}"
+    hf_query = urllib.parse.quote(hf_query)
+    return f"{base_url}?q={hf_query}"
 
 
 def download_file(url: str, dest_path: Path, progress_callback=None):
@@ -255,10 +256,31 @@ def retrive_models(
         if not download:
             continue
 
-        print(f"\nPlease download model: {filename}")
-        hf_url, civit_url = get_google_search_url(sha)
-        print(f"HuggingFace Search URL: {hf_url}")
-        print(f"CivitAI Search URL: {civit_url}")
+        print(f"\nModel {filename} is never downloaded before")
+        if source := model.get("source"):
+            url = source["download_url"]
+            target_path = MODEL_DIR / sha
+            download_thread = threading.Thread(
+                target=download_file,
+                args=(url, target_path, show_progress(filename)),
+            )
+            download_thread.start()
+            download_thread.join()
+
+            if not target_path.exists():
+                print("\nDownload failed!")
+                continue
+
+            print("\nDownload completed! Verifying SHA256...")
+            terget_sha = get_sha256(str(target_path))
+            if terget_sha != sha:
+                print("SHA256 verification failed! File may be corrupted or incorrect.")
+                target_path.unlink()
+                continue
+
+        google_url = get_google_search_url(sha)
+        print(f"Search URL: {google_url}")
+        print(f"Path: {workspace / filename}")
 
         while True:
             path = input("Enter path to downloaded file (or 'skip' to skip): ")
