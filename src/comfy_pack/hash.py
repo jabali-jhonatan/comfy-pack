@@ -1,74 +1,56 @@
 import os
 import json
-import hashlib
 import asyncio
+import sys
 from typing import Dict, List
 from datetime import datetime
 import fcntl
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-import multiprocessing
 from .const import SHA_CACHE_FILE
+import subprocess
+
+
+CALC_CMD = """
+import hashlib
+import sys
+
+filepath = sys.argv[1]
+chunk_size = int(sys.argv[2])
+
+sha256 = hashlib.sha256()
+with open(filepath, "rb") as f:
+    for chunk in iter(lambda: f.read(chunk_size), b""):
+        sha256.update(chunk)
+print(sha256.hexdigest())
+"""
 
 
 def calculate_sha256_worker(filepath: str, chunk_size: int = 4 * 1024 * 1024) -> str:
     """Calculate SHA-256 in a separate process"""
-    sha256 = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        for chunk in iter(lambda: f.read(chunk_size), b""):
-            sha256.update(chunk)
-    return sha256.hexdigest()
+    result = subprocess.run(
+        [sys.executable, "-c", CALC_CMD, filepath, str(chunk_size)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip()
 
 
 def get_sha256(filepath: str) -> str:
-    """
-    Synchronously calculate SHA-256 for a file with automatic caching
-
-    Args:
-        filepath: File path to calculate SHA-256 for
-
-    Returns:
-        SHA-256 hash of the file (None for nonexistent files)
-    """
     return batch_get_sha256([filepath])[filepath]
 
 
 def async_get_sha256(filepath: str) -> str:
-    """
-    Asynchronously calculate SHA-256 for a file with automatic caching
-
-    Args:
-        filepath: File path to calculate SHA-256 for
-
-    Returns:
-        SHA-256 hash of the file (None for nonexistent files)
-    """
     return asyncio.run(async_batch_get_sha256([filepath]))[filepath]
 
 
 def batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
-    """
-    Synchronously calculate SHA-256 for multiple files with automatic caching
-
-    Args:
-        filepaths: List of file paths to calculate SHA-256 for
-
-    Returns:
-        Dictionary mapping filepath to SHA-256 hash (None for nonexistent files)
-    """
     return asyncio.run(async_batch_get_sha256(filepaths))
 
 
 async def async_batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
-    """
-    Asynchronously calculate SHA-256 for multiple files with automatic caching
-
-    Args:
-        filepaths: List of file paths to calculate SHA-256 for
-
-    Returns:
-        Dictionary mapping filepath to SHA-256 hash (None for nonexistent files)
-    """
     # Load cache
     cache = {}
     if SHA_CACHE_FILE.exists():
@@ -79,12 +61,12 @@ async def async_batch_get_sha256(filepaths: List[str]) -> Dict[str, str]:
             pass
 
     # Initialize process pool
-    max_workers = max(1, multiprocessing.cpu_count() - 1)
+    max_workers = max(1, (os.cpu_count() or 1))
 
     # Process files
     results = {}
     async with asyncio.Lock():
-        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
             loop = asyncio.get_event_loop()
 
             for filepath in filepaths:

@@ -322,7 +322,12 @@ def retrive_models(
                 continue
 
 
-def install(cpack: str | Path, workspace: str | Path = "workspace", verbose: int = 0):
+def install(
+    cpack: str | Path,
+    workspace: str | Path = "workspace",
+    preheat: bool = True,
+    verbose: int = 0,
+):
     workspace = Path(workspace)
     with tempfile.TemporaryDirectory() as temp_dir:
         pack_dir = Path(temp_dir) / ".cpack"
@@ -342,5 +347,10 @@ def install(cpack: str | Path, workspace: str | Path = "workspace", verbose: int
         retrive_models(snapshot, workspace, verbose=verbose, download=False)
 
         install_custom_modules(snapshot, workspace, verbose=verbose)
+        if preheat:
+            from .run import ComfyUIServer
+
+            with ComfyUIServer(str(workspace), verbose=verbose):
+                pass
 
         retrive_models(snapshot, workspace, verbose=verbose)

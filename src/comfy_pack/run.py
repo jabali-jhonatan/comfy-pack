@@ -26,6 +26,10 @@ def _probe_comfyui_server(port: int) -> None:
     req = request.Request(full_url)
     _ = request.urlopen(req)
 
+    full_url = f"http://127.0.0.1:{port}/api/object_info"
+    req = request.Request(full_url)
+    _ = request.urlopen(req)
+
 
 def _is_port_in_use(port: int | str, host="localhost"):
     if isinstance(port, str):
@@ -120,6 +124,7 @@ class ComfyUIServer:
             command.extend(["--input-directory", self.input_dir])
         if subprocess.run(command, check=True, stdout=stdout):
             _probe_comfyui_server(self.port)
+            breakpoint()
             logger.info("Successfully started ComfyUI in the background")
             self.server_running = True
         else:
