@@ -6,9 +6,7 @@ import re
 # MODEL_NAME = r"[a-zA-Z0-9-._]+"
 # COMMIT = r"[a-f0-9]+"
 
-COMMIT_PATTERN = re.compile(
-    r'href="/([a-zA-Z0-9-._]+)/([a-zA-Z0-9-._]+)/commit/([a-f0-9]+)"'
-)
+COMMIT_PATTERN = re.compile(r'href="/([a-zA-Z0-9-._/]+)/commit/([a-f0-9]+)"')
 
 PATH_PATTERN = re.compile(
     r'data-target="CopyButton" data-props="{&quot;value&quot;:&quot;([^&]+)&quot;'
@@ -31,15 +29,14 @@ async def _lookup_huggingface_model(model_sha: str) -> dict:
                         continue
                     text = await resp.text()
                     if commit_match := COMMIT_PATTERN.search(text):
-                        owner, repo, commit = commit_match.groups()
+                        repo, commit = commit_match.groups()
                         if path_match := PATH_PATTERN.search(text):
                             path = path_match.group(1)
-                            download_url = f"https://huggingface.co/{owner}/{repo}/resolve/{commit}/{path}?download=true"
-                            url = f"https://huggingface.co/{owner}/{repo}/blob/{commit}/{path}"
+                            download_url = f"https://huggingface.co/{repo}/resolve/{commit}/{path}?download=true"
+                            url = f"https://huggingface.co/{repo}/blob/{commit}/{path}"
                             info = {
                                 "download_url": download_url,
                                 "url": url,
-                                "owner": owner,
                                 "repo": repo,
                                 "commit": commit,
                                 "source": "huggingface",
@@ -114,7 +111,6 @@ async def _loopup_civitai_model(model_sha: str) -> dict:
             repo_id = hit["id"]
             repo_name = hit["name"]
             versions = hit["versions"]
-            user_id = hit["user"]["id"]
 
             for version in versions:
                 if model_sha.upper() in version["hashes"]:
@@ -126,7 +122,6 @@ async def _loopup_civitai_model(model_sha: str) -> dict:
             return {
                 "download_url": f"https://civitai.com/api/download/models/{version_id}",
                 "url": f"https://civitai.com/models/{repo_id}?modelVersionId={version_id}",
-                "owner": user_id,
                 "repo": repo_id,
                 "commit": version_id,
                 "source": "civitai",
