@@ -208,9 +208,14 @@ def run_workflow(
     if verbose > 0:
         extra_args.append("--verbose")
 
+    stdout = None if verbose > 0 else subprocess.DEVNULL
+    command = ["comfy", "--skip-prompt", "tracking", "disable"]
+    subprocess.run(command, check=True, stdout=stdout)
+
     # Execute the workflow
     command = [
         "comfy",
+        "--skip-prompt",
         "run",
         "--workflow",
         workflow_file_path.as_posix(),
