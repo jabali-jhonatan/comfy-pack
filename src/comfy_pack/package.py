@@ -172,6 +172,11 @@ def get_google_search_url(sha: str) -> str:
 
 def download_file(url: str, dest_path: Path, progress_callback=None):
     """Download file with progress tracking"""
+    if subprocess.call(["curl", "--version"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.check_call(
+            ["curl", "-L", url, "-o", str(dest_path)],
+        )
+        return True
     try:
         with urllib.request.urlopen(url) as response:
             total_size = int(response.headers.get("content-length", 0))
@@ -276,6 +281,7 @@ def retrive_models(
             if terget_sha != sha:
                 print("SHA256 verification failed! File may be corrupted or incorrect.")
                 target_path.unlink()
+            else:
                 continue
 
         google_url = get_google_search_url(sha)
