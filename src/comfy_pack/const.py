@@ -12,7 +12,7 @@ if not CPACK_HOME.exists():
 
 MODEL_DIR = CPACK_HOME / "models"
 WORKSPACE_DIR = CPACK_HOME / "workspace"
-SHA_CACHE_FILE = CPACK_HOME / ".sha_cache.json"
-MODEL_SOURCE_CACHE_FILE = CPACK_HOME / ".model_source_cache.json"
+SHA_CACHE_FILE = CPACK_HOME / "sha_cache.json"
+MODEL_SOURCE_CACHE_FILE = CPACK_HOME / "model_source_cache.json"
 
 COMFYUI_REPO = "https://github.com/comfyanonymous/ComfyUI.git"

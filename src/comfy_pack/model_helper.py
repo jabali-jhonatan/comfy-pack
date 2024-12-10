@@ -39,6 +39,7 @@ async def _lookup_huggingface_model(model_sha: str) -> dict:
                                 "url": url,
                                 "repo": repo,
                                 "commit": commit,
+                                "path": path,
                                 "source": "huggingface",
                             }
                             return info

@@ -351,6 +351,10 @@ function createDownloadModal() {
   title.style.marginBottom = "15px";
   title.style.color = "#fff";
 
+  const hint = document.createElement("div");
+  hint.textContent = "First run may take a few minutes to compute model checksums, depending on the number of models.";
+  hint.style.cssText = "color: #888; font-size: 0.9em; margin-bottom: 15px;";
+
   const progress = document.createElement("div");
   progress.style.cssText = `
     width: 100%;
@@ -370,6 +374,7 @@ function createDownloadModal() {
 
   progress.appendChild(progressBar);
   modal.appendChild(title);
+  modal.appendChild(hint);
   modal.appendChild(progress);
 
   const { close } = createModal(modal);
