@@ -61,6 +61,7 @@ def _watch_server(server: comfy_pack.run.ComfyUIServer):
         time.sleep(1)
         if not server.is_running():
             os.kill(os.getpid(), signal.SIGTERM)
+            break
 
 
 @bentoml.mount_asgi_app(app, path="/comfy")
@@ -120,6 +121,7 @@ class ComfyService:
     def on_shutdown(self):
         if not EXISTING_COMFYUI_SERVER:
             self.server_stack.close()
+            self.watch_thread.join()
 
     @bentoml.on_deployment
     @staticmethod
