@@ -1,4 +1,4 @@
-# ComfyPack
+# Comfy-Pack
 
 A comprehensive toolkit for standardizing, packaging and deploying ComfyUI workflows as reproducible environments and production-ready REST services.
 
@@ -34,7 +34,7 @@ comfy-pack restore workflow.cpack.zip --dir ./
 comfy-pack info workflow.cpack.zip
 
 # Run
-comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4 
+comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4
 ```
 
 ### Develop REST service
@@ -44,7 +44,7 @@ comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4
 
 ComfyPack provides custom nodes for standardizing inputs:
 - ImageInput
-- StringInput  
+- StringInput
 - IntInput
 - AnyInput
 - ImageOutput
