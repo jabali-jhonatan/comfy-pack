@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
-import contextlib
 import os
 import shutil
+import signal
+import threading
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -53,21 +56,33 @@ def workflow_json():
     return workflow
 
 
+def _watch_server(server: comfy_pack.run.ComfyUIServer):
+    while True:
+        time.sleep(1)
+        if not server.is_running():
+            os.kill(os.getpid(), signal.SIGTERM)
+
+
 @bentoml.mount_asgi_app(app, path="/comfy")
 @bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2}, resources={"gpu": 1})
 class ComfyService:
     def __init__(self):
         if not EXISTING_COMFYUI_SERVER:
             self.server_stack = contextlib.ExitStack()
-            server = self.server_stack.enter_context(
+            self.server = self.server_stack.enter_context(
                 comfy_pack.run.ComfyUIServer(
                     str(_get_workspace()),
                     str(INPUT_DIR),
                     verbose=int("BENTOML_DEBUG" in os.environ),
                 )
             )
-            self.host = server.host
-            self.port = server.port
+            self.host = self.server.host
+            self.port = self.server.port
+            self.watch_thread = threading.Thread(
+                target=_watch_server,
+                args=(self.server,),
+                daemon=True,
+            )
         else:
             if ":" in EXISTING_COMFYUI_SERVER:
                 self.host, port = EXISTING_COMFYUI_SERVER.split(":")
