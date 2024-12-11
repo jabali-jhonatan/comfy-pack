@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-import random
-import uuid
 import copy
 import json
 import logging
 import os
-import socket
+import random
 import shutil
+import socket
 import subprocess
+import time
+import uuid
 from pathlib import Path
 from typing import Any, Union
 
@@ -62,8 +63,8 @@ class ComfyUIServer:
         self.workspace = workspace
         self.input_dir = input_dir
         self.verbose = verbose
-        self.server_running = False
         self.host = host
+        self.server_proc: subprocess.Popen | None = None
 
         run_dir = Path(workspace) / "cli_run"
         self.temp_dir = run_dir / "temp"
@@ -109,7 +110,6 @@ class ComfyUIServer:
             "--workspace",
             self.workspace,
             "launch",
-            "--background",
             "--",
             "--output-directory",
             self.output_dir,
@@ -122,13 +122,18 @@ class ComfyUIServer:
         ]
         if self.input_dir:
             command.extend(["--input-directory", self.input_dir])
-        if subprocess.run(command, check=True, stdout=stdout):
+        self.server_proc = subprocess.Popen(command, stdout=stdout, stderr=stdout)
+        if _wait_for_startup(self.host, self.port):
             _probe_comfyui_server(self.port)
             logger.info("Successfully started ComfyUI in the background")
-            self.server_running = True
         else:
             logger.error("Failed to start ComfyUI in the background")
         return self
+
+    def is_running(self) -> bool:
+        if self.server_proc is None:
+            return False
+        return self.server_proc.poll() is None
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """
@@ -139,13 +144,12 @@ class ComfyUIServer:
         Raises:
             RuntimeError: If ComfyUI is not currently running.
         """
-        if not self.server_running:
+        if self.server_proc is None:
             raise RuntimeError("ComfyUI server is not started yet")
 
         logger.info("Stopping ComfyUI...")
-        command = ["comfy", "stop"]
-        stdout = None if self.verbose > 0 else subprocess.DEVNULL
-        subprocess.run(command, check=True, stdout=stdout)
+        self.server_proc.terminate()
+        self.server_proc.wait()
         logger.info("Successfully stopped ComfyUI")
 
         logger.info("Cleaning up temporary directory...")
@@ -153,8 +157,17 @@ class ComfyUIServer:
         shutil.rmtree(self.output_dir, ignore_errors=True)
         logger.info("Successfully cleaned up temporary directory")
 
-        self.server_running = False
+        self.server_proc = None
         return False
+
+
+def _wait_for_startup(host: str, port: int, timeout: int = 1800) -> bool:
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if _is_port_in_use(port, host):
+            return True
+        time.sleep(1)
+    return False
 
 
 def run_workflow(
