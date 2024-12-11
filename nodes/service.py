@@ -67,6 +67,7 @@ def _watch_server(server: comfy_pack.run.ComfyUIServer):
 @bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2}, resources={"gpu": 1})
 class ComfyService:
     def __init__(self):
+        print("EXISTING_COMFYUI_SERVER", EXISTING_COMFYUI_SERVER)
         if not EXISTING_COMFYUI_SERVER:
             self.server_stack = contextlib.ExitStack()
             self.server = self.server_stack.enter_context(
@@ -76,6 +77,7 @@ class ComfyService:
                     verbose=int("BENTOML_DEBUG" in os.environ),
                 )
             )
+            print("ComfyUI Server started at", self.server.host, self.server.port)
             self.host = self.server.host
             self.port = self.server.port
             self.watch_thread = threading.Thread(
@@ -83,6 +85,8 @@ class ComfyService:
                 args=(self.server,),
                 daemon=True,
             )
+            self.watch_thread.start()
+            print("Watch thread started")
         else:
             if ":" in EXISTING_COMFYUI_SERVER:
                 self.host, port = EXISTING_COMFYUI_SERVER.split(":")

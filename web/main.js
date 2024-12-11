@@ -786,7 +786,7 @@ async function createBuildingModal(data) {
     <div id="build-info"></div>
     <pre id="build-error"></pre>
   <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
-  Initial model pushing may take several minutes. Models are cached and will be reused in subsequent pushing.
+  First run may take several minutes to calculate model checksums, depending on the number of models.
   </p>
   `;
 
