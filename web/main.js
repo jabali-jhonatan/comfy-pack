@@ -825,13 +825,12 @@ async function createBuildingModal(data) {
       title.textContent = "Push Completed";
       // Extract org name from endpoint
       const endpointUrl = new URL(data.endpoint);
-      const org = endpointUrl.host.split('.')[0];
 
       // Extract bento repo and version from bento tag
       const [repoName, version] = respData.bento.split(':');
 
       // Construct status URL
-      const statusUrl = `https://status-ci.cloud.bentoml.com/bento_repositories/${repoName}/bentos/${version}`;
+      const statusUrl = `${endpointUrl.origin}/bento_repositories/${repoName}/bentos/${version}`;
 
       info.innerHTML = `
         <div style="text-align: center; padding: 20px 0;">
