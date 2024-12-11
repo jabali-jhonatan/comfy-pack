@@ -138,6 +138,8 @@ class ComfyService:
             install_comfyui(snapshot, comfy_workspace, verbose=verbose)
 
             for model in snapshot["models"]:
+                if model.get("disabled"):
+                    continue
                 model_tag = model.get("model_tag")
                 if not model_tag:
                     logger.warning(
