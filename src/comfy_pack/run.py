@@ -134,14 +134,6 @@ class ComfyUIServer:
             preexec_fn=preexec_fn,
         )
 
-        def sigterm_handler(signum, frame):
-            print(f"Received signal {signum}, probagating to ComfyUI server")
-            if self.server_proc is not None:
-                os.killpg(os.getpgid(self.server_proc.pid), signum)
-
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        signal.signal(signal.SIGINT, sigterm_handler)
-
         if _wait_for_startup(self.host, self.port):
             _probe_comfyui_server(self.port)
             logger.info("Successfully started ComfyUI in the background")

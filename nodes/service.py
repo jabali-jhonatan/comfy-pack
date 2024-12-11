@@ -119,9 +119,12 @@ class ComfyService:
 
     @bentoml.on_shutdown
     def on_shutdown(self):
+        print("Shutting down")
         if not EXISTING_COMFYUI_SERVER:
             self.server_stack.close()
+            print("server_stack closed")
             self.watch_thread.join()
+            print("Watch thread finished")
 
     @bentoml.on_deployment
     @staticmethod
