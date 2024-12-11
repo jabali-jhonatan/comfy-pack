@@ -45,6 +45,11 @@ const style = `
   background: #00a67d;
 }
 
+.cpack-btn.primary:disabled {
+  background: #81a39b;
+  cursor: not-allowed;
+}
+
 .cpack-btn-container {
   margin-top: 20px;
   display: flex;
@@ -83,6 +88,11 @@ const style = `
   margin-bottom: 5px;
 }
 
+.cpack-form-item.required label::after {
+  content: "*";
+  color: #ff8383;
+}
+
 #build-info {
   display: flex;
   padding: 10px;
@@ -112,6 +122,13 @@ const style = `
   border-radius: 3px;
   background: #606060;
 }
+
+.error-message {
+  color: #ff8383;
+  margin-top: 5px;
+  display: none;
+  font-size: 0.9em;
+}
 `
 
 class ModelList {
@@ -129,13 +146,12 @@ class ModelList {
       border-radius: 4px;
       padding: 5px;
     `;
-    this.load();
   }
 
   async load() {
     try {
       const { workflow, output: workflow_api } = await app.graphToPrompt();
-      const resp = await api.fetchApi("/bentoml/model/query", { 
+      const resp = await api.fetchApi("/bentoml/model/query", {
         method: "POST",
         body: JSON.stringify({ workflow, workflow_api }),
         headers: { "Content-Type": "application/json" }
@@ -162,7 +178,7 @@ class ModelList {
     const now = Date.now() / 1000;
     const ONE_DAY = 24 * 60 * 60;
 
-    this.container.innerHTML = this.getSelectAllHtml() + 
+    this.container.innerHTML = this.getSelectAllHtml() +
       models.map(model => this.getModelItemHtml(model, now, ONE_DAY)).join('');
 
     this.setupEventListeners();
@@ -189,9 +205,9 @@ class ModelList {
     return `
       <div style="padding: 6px 0; border-bottom: 1px solid #333;">
         <label style="display: flex; align-items: flex-start;">
-          <input type="checkbox" name="models" value="${path}" 
-                 style="margin-top: 4px;"
-                 ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
+          <input type="checkbox" name="models" value="${path}"
+            style="margin-top: 4px;"
+            ${isRecentlyAccessed || model.refered ? 'checked' : ''} />
           <div style="margin-left: 8px;">
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto;">
               <div style="font-weight: bold; white-space: nowrap;">${name}</div>
@@ -243,9 +259,6 @@ class ModelList {
   }
 }
 
-async function loadModels(modelsList, countId) {
-  new ModelList(modelsList, countId);
-}
 function createModal(modal) {
   const overlay = document.createElement("div");
   overlay.className = "cpack-overlay";
@@ -264,7 +277,7 @@ function createModal(modal) {
 
 
 async function createPackModal() {
-  return new Promise(async (resolve) => {
+  return new Promise((resolve) => {
     const modal = document.createElement("div");
     modal.className = "cpack-modal";
     modal.id = "input-modal";
@@ -295,6 +308,7 @@ async function createPackModal() {
     const confirmButton = document.createElement("button");
     confirmButton.textContent = "Pack";
     confirmButton.className = "cpack-btn primary";
+    confirmButton.disabled = true;
 
     const cancelButton = document.createElement("button");
     cancelButton.textContent = "Cancel";
@@ -309,8 +323,10 @@ async function createPackModal() {
     const { close } = createModal(modal);
 
     const modelsList = form.querySelector("#models-list");
-    const details = form.querySelector("details");
     const modelListComponent = new ModelList(modelsList, "models-list");
+    modelListComponent.load().then(() => {
+      confirmButton.disabled = false;
+    });
 
     confirmButton.onclick = () => {
       const filename = form.querySelector("input[name='filename']").value.trim();
@@ -400,10 +416,10 @@ async function packageAction() {
     const { workflow, output: workflow_api } = await app.graphToPrompt();
 
     downloadModal.updateProgress(40);
-    const body = JSON.stringify({ 
-      workflow, 
+    const body = JSON.stringify({
+      workflow,
       workflow_api,
-      models: result.models 
+      models: result.models
     });
 
     downloadModal.updateProgress(60);
@@ -518,7 +534,7 @@ const serveForm = `
 <div class="cpack-form-item">
   <label for="port">Port</label>
   <input type="number" class="cpack-input" name="port" value="3000" />
-  <div class="error-message" style="color: #ff8383; margin-top: 5px; display: none"></div>
+  <div class="error-message"></div>
 </div>
 `
 
@@ -526,9 +542,10 @@ const buildForm = `
   <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
     This feature is powered by <a href="https://www.bentoml.com/?from=comfy-pack" target="_blank" style="color: #00a67d;">BentoCloud</a>, a platform for deploying <br>and managing ML services in customizable clusters
   </p>
-<div class="cpack-form-item">
-  <label for="bentoName">Service Name</label>
-  <input type="text" class="cpack-input" name="bentoName" value="${localStorage.getItem('cpack-bento-name') || 'comfy-pack-app'}" />
+<div class="cpack-form-item required">
+  <label for="bentoName">Bento Name</label>
+  <input type="text" class="cpack-input" name="bentoName" placeholder="comfy-pack-app" />
+  <div class="error-message">Bento name is required</div>
 </div>
 <div class="cpack-form-item">
   <details>
@@ -544,16 +561,16 @@ const buildForm = `
     <button class="cpack-btn" id="add-button" style="margin: 5px 0px">Add</button>
   </div>
 </div>
-<div class="cpack-form-item">
-  <label>BentoCloud API<span style="color: #ff8383">*</span></label>
+<div class="cpack-form-item required">
+  <label>BentoCloud API</label>
   <div id="credentials-group" style="margin-top: 10px;">
     <div class="cpack-form-item">
       <input type="text" class="cpack-input" name="endpoint" placeholder="https://<your_org>.cloud.bentoml.com" value="${localStorage.getItem('cpack-endpoint') || ''}" required />
-      <div class="error-message" style="color: #ff8383; margin-top: 5px; display: none">Endpoint is required</div>
+      <div class="error-message">Endpoint is required</div>
     </div>
     <div class="cpack-form-item">
       <input type="password" class="cpack-input" name="apiKey" placeholder="<your_token>" value="${localStorage.getItem('cpack-api-key') || ''}" required />
-      <div class="error-message" style="color: #ff8383; margin-top: 5px; display: none">API Key is required</div>
+      <div class="error-message">API Key is required</div>
     </div>
       <p style="font-size: 0.85em; color: #888; margin-top: 5px;">
         Get your API Token at <a href="https://cloud.bentoml.com/signup?from=comfy-pack" target="_blank" style="color: #00a67d;">cloud.bentoml.com</a>
@@ -564,7 +581,7 @@ const buildForm = `
 
 function createBuildModal() {
   const modal = document.createElement("div");
-  modal.id = "build-modal"; 
+  modal.id = "build-modal";
   modal.className = "cpack-modal";
 
   const title = document.createElement("div");
@@ -591,7 +608,7 @@ function createBuildModal() {
     }
   });
 
-  
+
   const buttonContainer = document.createElement("div");
   buttonContainer.className = "cpack-btn-container";
 
@@ -599,6 +616,7 @@ function createBuildModal() {
   confirmButton.innerHTML = `Push to Cloud`;
   confirmButton.className = "cpack-btn primary";
   confirmButton.style.fontWeight = "bold";
+  confirmButton.disabled = true;
 
   const cancelButton = document.createElement("button");
   cancelButton.textContent = "Cancel";
@@ -616,10 +634,12 @@ function createBuildModal() {
   cancelButton.onclick = close;
   return new Promise((resolve) => {
     form.querySelector("input[name='bentoName']").select();
-    
-    const details = form.querySelector("details");
+
     const modelsList = form.querySelector("#build-models-list");
     const modelListComponent = new ModelList(modelsList, "build-models-list");
+    modelListComponent.load().then(() => {
+      confirmButton.disabled = false;
+    });
 
     confirmButton.onclick = async (e) => {
       e.preventDefault();
@@ -630,9 +650,14 @@ function createBuildModal() {
 
       // Reset error messages
       form.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
-      
+
       // Validate required fields
       let hasError = false;
+
+      if (!bentoName.trim()) {
+        form.querySelector('input[name="bentoName"]').nextElementSibling.style.display = 'block';
+        hasError = true;
+      }
       if (!endpoint.trim()) {
         form.querySelector('input[name="endpoint"]').nextElementSibling.style.display = 'block';
         hasError = true;
@@ -641,16 +666,15 @@ function createBuildModal() {
         form.querySelector('input[name="apiKey"]').nextElementSibling.style.display = 'block';
         hasError = true;
       }
-      
+
       if (hasError) {
         return;
       }
-      
+
       // Save values to localStorage
-      localStorage.setItem('cpack-bento-name', bentoName);
       localStorage.setItem('cpack-endpoint', endpoint);
       localStorage.setItem('cpack-api-key', apiKey);
-      
+
       const { workflow, output: workflow_api } = await app.graphToPrompt();
       const data = {
         bento_name: bentoName,
@@ -714,8 +738,6 @@ async function createServeStatusModal(url) {
   modal.appendChild(buttonContainer);
 
   const { close } = createModal(modal);
-  
-  
 
   cancelButton.onclick = async () => {
     cancelButton.disabled = true;
@@ -730,7 +752,7 @@ async function createServeStatusModal(url) {
   };
 
   const statusInfo = info.querySelector("#status-info");
-  
+
   // Start status checking
   const checkInterval = setInterval(async () => {
     try {
@@ -804,26 +826,26 @@ async function createBuildingModal(data) {
       // Extract org name from endpoint
       const endpointUrl = new URL(data.endpoint);
       const org = endpointUrl.host.split('.')[0];
-      
+
       // Extract bento repo and version from bento tag
       const [repoName, version] = respData.bento.split(':');
-      
+
       // Construct status URL
       const statusUrl = `https://status-ci.cloud.bentoml.com/bento_repositories/${repoName}/bentos/${version}`;
-      
+
       info.innerHTML = `
         <div style="text-align: center; padding: 20px 0;">
           <div style="font-size: 48px; margin-bottom: 15px;">✨</div>
           <div style="color: #888; margin-bottom: 20px">
             Your workflow has been pushed to BentoCloud and is ready for deployment
           </div>
-          
+
           <div style="background: #1d1d1d; padding: 15px; border-radius: 8px; margin-bottom: 20px">
             <div class="cpack-copyable">
               <span>${repoName}:${version}</span>
-              <a href="${statusUrl}" target="_blank" 
-                 style="background: #00a67d; color: white; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font-size: 0.9em" 
-                 title="View pushed Bento">
+              <a href="${statusUrl}" target="_blank"
+                style="background: #00a67d; color: white; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font-size: 0.9em"
+                title="View pushed Bento">
                 <span>Deploy Now</span>
                 <svg style="width:16px;height:16px" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
@@ -833,15 +855,15 @@ async function createBuildingModal(data) {
           </div>
 
           <div style="display: flex; justify-content: center; gap: 10px">
-            <a href="https://docs.bentoml.com/en/latest/scale-with-bentocloud/deployment/index.html?from=comfy-pack" target="_blank" 
-               style="color:#00a67d; text-decoration:none; display:flex; align-items:center; gap:5px">
+            <a href="https://docs.bentoml.com/en/latest/scale-with-bentocloud/deployment/index.html?from=comfy-pack" target="_blank"
+              style="color:#00a67d; text-decoration:none; display:flex; align-items:center; gap:5px">
               <span>Deployment Guide</span>
               <svg style="width:16px;height:16px" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
               </svg>
             </a>
             <a href="https://cloud.bentoml.com" target="_blank"
-               style="color:#00a67d; text-decoration:none; display:flex; align-items:center; gap:5px">
+              style="color:#00a67d; text-decoration:none; display:flex; align-items:center; gap:5px">
               <span>BentoCloud Console Home</span>
               <svg style="width:16px;height:16px" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" />
