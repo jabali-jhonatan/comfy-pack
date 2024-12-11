@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import socket
 import asyncio
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -12,11 +12,12 @@ import time
 import uuid
 import zipfile
 from pathlib import Path
-from typing import Union, Any
+from typing import Any, Union
 
 import folder_paths
 from aiohttp import web
 from server import PromptServer
+
 from comfy_pack.hash import async_batch_get_sha256
 from comfy_pack.model_helper import alookup_model_source
 
@@ -52,6 +53,7 @@ async def _write_snapshot(path: ZPath, data: dict, models: list | None = None) -
     )
     stdout, _ = await proc.communicate()
     if models is None:
+        print("Package => Writing models")
         models = await _get_models()
     with path.joinpath("snapshot.json").open("w") as f:
         data = {
@@ -96,7 +98,6 @@ async def _get_models(
     ensure_sha=True,
     ensure_source=True,
 ) -> list:
-    print("Package => Writing models")
     proc = await asyncio.subprocess.create_subprocess_exec(
         "git",
         "ls-files",
