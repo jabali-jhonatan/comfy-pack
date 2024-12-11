@@ -92,9 +92,9 @@ async def async_batch_get_sha256(
                         results[filepath] = cache_entry["sha256"]
                         continue
 
-                    if cache_only:
-                        results[filepath] = ""
-                        continue
+                if cache_only:
+                    results[filepath] = ""
+                    continue
 
                 # Calculate new SHA
                 calc_func = partial(calculate_sha256_worker, filepath)
