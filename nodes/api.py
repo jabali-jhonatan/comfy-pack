@@ -11,6 +11,7 @@ import tempfile
 import time
 import uuid
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Union
 
@@ -18,8 +19,8 @@ import folder_paths
 from aiohttp import web
 from server import PromptServer
 
-from comfy_pack.hash import async_batch_get_sha256
-from comfy_pack.model_helper import alookup_model_source
+from comfy_pack.hash import ModelHashes
+from comfy_pack.model_helper import ModelEntry, get_model_entry
 
 ZPath = Union[Path, zipfile.Path]
 TEMP_FOLDER = Path(__file__).parent.parent / "temp"
@@ -95,9 +96,8 @@ async def _get_models(
     store_models: bool = False,
     workflow_api: dict | None = None,
     model_filter: set[str] | None = None,
-    ensure_sha=True,
-    ensure_source=True,
-) -> list:
+    ensure_source: bool = True,
+) -> list[ModelEntry]:
     proc = await asyncio.subprocess.create_subprocess_exec(
         "git",
         "ls-files",
@@ -107,51 +107,33 @@ async def _get_models(
     )
     stdout, _ = await proc.communicate()
 
-    models = []
     model_filenames = [
         os.path.abspath(line)
         for line in stdout.decode().splitlines()
         if not os.path.basename(line).startswith(".")
     ]
-    model_hashes = await async_batch_get_sha256(
-        model_filenames,
-        cache_only=not (ensure_sha or store_models),
-    )
-
-    for filename in model_filenames:
-        relpath = os.path.relpath(filename, folder_paths.base_path)
-
-        model_data = {
-            "filename": relpath,
-            "size": os.path.getsize(filename),
-            "atime": os.path.getatime(filename),
-            "ctime": os.path.getctime(filename),
-            "disabled": relpath not in model_filter
-            if model_filter is not None
-            else False,
-            "sha256": model_hashes.get(filename),
-        }
-
-        model_data["source"] = await alookup_model_source(
-            model_data["sha256"],
-            cache_only=not ensure_source,
+    model_hashes = ModelHashes()
+    await model_hashes.load()
+    with ThreadPoolExecutor() as executor:
+        models = await asyncio.gather(
+            *(
+                get_model_entry(
+                    f,
+                    executor,
+                    model_hashes,
+                    store_models=store_models,
+                    ensure_source=ensure_source,
+                )
+                for f in model_filenames
+            )
         )
-
-        if store_models:
-            import bentoml
-
-            model_tag = f'cpack-model:{model_data["sha256"][:16]}'
-            try:
-                model = bentoml.models.get(model_tag)
-            except bentoml.exceptions.NotFound:
-                with bentoml.models.create(
-                    model_tag, labels={"filename": relpath}
-                ) as model:
-                    shutil.copy(filename, model.path_of("model.bin"))
-            model_data["model_tag"] = model_tag
-        models.append(model_data)
-    if workflow_api:
-        for model in models:
+    # save the hashes to cache
+    await model_hashes.save()
+    for model in models:
+        model["disabled"] = (
+            model_filter is not None and model["filename"] not in model_filter
+        )
+        if workflow_api:
             model["refered"] = _is_file_refered(Path(model["filename"]), workflow_api)
     return models
 
@@ -477,7 +459,6 @@ async def get_models(request):
     data = await request.json()
     models = await _get_models(
         workflow_api=data.get("workflow_api"),
-        ensure_sha=False,
         ensure_source=False,
     )
     return web.json_response({"models": models})
