@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import signal
 import json
 import logging
 import os
@@ -79,7 +78,7 @@ class ComfyUIServer:
         else:
             self.port = port
 
-    def __enter__(self):
+    def start(self) -> None:
         """
         Start the ComfyUI process.
 
@@ -139,14 +138,13 @@ class ComfyUIServer:
             logger.info("Successfully started ComfyUI in the background")
         else:
             logger.error("Failed to start ComfyUI in the background")
-        return self
 
     def is_running(self) -> bool:
         if self.server_proc is None:
             return False
         return self.server_proc.poll() is None
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def stop(self) -> None:
         """
         Stop the ComfyUI process.
 
@@ -158,6 +156,7 @@ class ComfyUIServer:
         if self.server_proc is None:
             raise RuntimeError("ComfyUI server is not started yet")
 
+        self.server_proc = None
         logger.info("Stopping ComfyUI...")
         self.server_proc.terminate()
         self.server_proc.wait()
@@ -168,8 +167,12 @@ class ComfyUIServer:
         shutil.rmtree(self.output_dir, ignore_errors=True)
         logger.info("Successfully cleaned up temporary directory")
 
-        self.server_proc = None
-        return False
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
 
 
 def _wait_for_startup(host: str, port: int, timeout: int = 1800) -> bool:

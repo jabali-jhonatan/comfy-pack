@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 import os
@@ -60,7 +59,11 @@ def _watch_server(server: comfy_pack.run.ComfyUIServer):
     while True:
         time.sleep(1)
         if not server.is_running():
-            os.kill(os.getpid(), signal.SIGTERM)
+            if server.server_proc is not None:
+                logger.warning(
+                    "Server exited with code %s", server.server_proc.returncode
+                )
+                os.kill(os.getpid(), signal.SIGTERM)
             break
 
 
@@ -68,17 +71,16 @@ def _watch_server(server: comfy_pack.run.ComfyUIServer):
 @bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2}, resources={"gpu": 1})
 class ComfyService:
     def __init__(self):
-        print("EXISTING_COMFYUI_SERVER", EXISTING_COMFYUI_SERVER)
         if not EXISTING_COMFYUI_SERVER:
-            self.server_stack = contextlib.ExitStack()
-            self.server = self.server_stack.enter_context(
-                comfy_pack.run.ComfyUIServer(
-                    str(_get_workspace()),
-                    str(INPUT_DIR),
-                    verbose=int("BENTOML_DEBUG" in os.environ),
-                )
+            self.server = comfy_pack.run.ComfyUIServer(
+                str(_get_workspace()),
+                str(INPUT_DIR),
+                verbose=int("BENTOML_DEBUG" in os.environ),
             )
-            print("ComfyUI Server started at", self.server.host, self.server.port)
+            self.server.start()
+            logger.info(
+                "ComfyUI Server started at %s:%s", self.server.host, self.server.port
+            )
             self.host = self.server.host
             self.port = self.server.port
             self.watch_thread = threading.Thread(
@@ -87,8 +89,9 @@ class ComfyService:
                 daemon=True,
             )
             self.watch_thread.start()
-            print("Watch thread started")
+            logger.info("Watch thread started")
         else:
+            logger.info("Attaching to ComfyUI server: %s", EXISTING_COMFYUI_SERVER)
             if ":" in EXISTING_COMFYUI_SERVER:
                 self.host, port = EXISTING_COMFYUI_SERVER.split(":")
                 self.port = int(port)
@@ -119,12 +122,12 @@ class ComfyService:
 
     @bentoml.on_shutdown
     def on_shutdown(self):
-        print("Shutting down")
+        logger.info("Shutting down")
         if not EXISTING_COMFYUI_SERVER:
-            self.server_stack.close()
-            print("server_stack closed")
+            self.server.stop()
+            logger.info("server stopped")
             self.watch_thread.join()
-            print("Watch thread finished")
+            logger.info("Watch thread finished")
 
     @bentoml.on_deployment
     @staticmethod
