@@ -71,6 +71,8 @@ def _watch_server(server: comfy_pack.run.ComfyUIServer):
 @bentoml.service(traffic={"timeout": REQUEST_TIMEOUT * 2}, resources={"gpu": 1})
 class ComfyService:
     def __init__(self):
+        logger = logging.getLogger("comfy_pack")
+        logger.setLevel(logging.INFO)
         if not EXISTING_COMFYUI_SERVER:
             self.server = comfy_pack.run.ComfyUIServer(
                 str(_get_workspace()),
