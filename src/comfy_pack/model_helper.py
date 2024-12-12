@@ -28,7 +28,7 @@ async def _lookup_huggingface_model(model_sha: str) -> dict:
     from googlesearch import search
 
     query = f"site:huggingface.co blob {model_sha}"
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=True) as session:
         for url in search(query, num_results=5):
             assert isinstance(url, str)
             if "blob" not in url:
@@ -61,7 +61,7 @@ async def _lookup_huggingface_model(model_sha: str) -> dict:
 async def _loopup_civitai_model(model_sha: str) -> dict:
     import aiohttp
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=True) as session:
         async with session.post(
             "https://meilisearch-v1-9.civitai.com/multi-search",
             headers={
