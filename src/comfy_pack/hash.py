@@ -1,14 +1,14 @@
-import os
-import json
 import asyncio
-import sys
-from typing import Dict, List
-from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
-from functools import partial
-from .const import SHA_CACHE_FILE
+import json
+import os
 import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from functools import partial
+from typing import Dict, List
 
+from .const import SHA_CACHE_FILE
 
 CALC_CMD = """
 import hashlib
@@ -80,11 +80,7 @@ async def async_batch_get_sha256(
                 # Get file info
                 stat = os.stat(filepath)
                 current_size = stat.st_size
-                try:
-                    current_time = stat.st_birthtime
-                except AttributeError:
-                    # linux files have no `st_birthtime`
-                    current_time = stat.st_ctime
+                current_time = stat.st_ctime
 
                 # Check cache
                 cache_entry = cache.get(filepath)
