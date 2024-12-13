@@ -136,8 +136,12 @@ async def _get_models(
             model_data["sha256"],
             cache_only=not ensure_source,
         )
+        should_store = store_models and (
+            model_data["source"].get("source") != "huggingface"
+            or model_data["source"].get("repo", "").startswith("datasets/")
+        )
 
-        if store_models:
+        if should_store:
             import bentoml
 
             model_tag = f'cpack-model:{model_data["sha256"][:16]}'

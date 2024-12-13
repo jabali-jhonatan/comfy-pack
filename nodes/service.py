@@ -13,13 +13,13 @@ from typing import Any, cast
 
 import bentoml
 import fastapi
+from bentoml.models import HuggingFaceModel
 
 import comfy_pack
 import comfy_pack.run
 
 REQUEST_TIMEOUT = 360
 BASE_DIR = Path(__file__).parent
-WORKFLOW_FILE = BASE_DIR / "workflow_api.json"
 COPY_THRESHOLD = 10 * 1024 * 1024
 INPUT_DIR = BASE_DIR / "input"
 logger = logging.getLogger("bentoml.service")
@@ -27,9 +27,11 @@ logger = logging.getLogger("bentoml.service")
 
 EXISTING_COMFYUI_SERVER = os.environ.get("COMFYUI_SERVER")
 
-
-with open(WORKFLOW_FILE, "r") as f:
+with BASE_DIR.joinpath("workflow_api.json").open() as f:
     workflow = json.load(f)
+
+with BASE_DIR.joinpath("snapshot.json").open("rb") as f:
+    snapshot = json.load(f)
 
 InputModel = comfy_pack.generate_input_model(workflow)
 app = fastapi.FastAPI()
@@ -142,9 +144,6 @@ class ComfyService:
         verbose = int("BENTOML_DEBUG" in os.environ)
         comfy_workspace = _get_workspace()
 
-        with BASE_DIR.joinpath("snapshot.json").open("rb") as f:
-            snapshot = json.load(f)
-
         if not comfy_workspace.joinpath(".DONE").exists():
             if comfy_workspace.exists():
                 logger.info("Removing existing workspace")
@@ -154,19 +153,33 @@ class ComfyService:
             for model in snapshot["models"]:
                 if model.get("disabled", False):
                     continue
-                model_tag = model.get("model_tag")
-                if not model_tag:
-                    logger.warning(
-                        "Model %s is not in model store, the workflow may not work",
-                        model["filename"],
-                    )
-                    continue
                 model_path = comfy_workspace / cast(str, model["filename"])
-                model_path.parent.mkdir(parents=True, exist_ok=True)
-                bento_model = bentoml.models.get(model_tag)
-                model_file = bento_model.path_of("model.bin")
-                logger.info("Copying %s to %s", model_file, model_path)
-                model_path.symlink_to(model_file)
+                if model_tag := model.get("model_tag"):
+                    model_path.parent.mkdir(parents=True, exist_ok=True)
+                    bento_model = bentoml.models.get(model_tag)
+                    model_file = bento_model.path_of("model.bin")
+                    logger.info("Copying %s to %s", model_file, model_path)
+                    model_path.symlink_to(model_file)
+                elif (source := model["source"]).get("source") == "huggingface":
+                    matched = next(
+                        (
+                            m
+                            for m in ComfyService.models
+                            if isinstance(m, HuggingFaceModel)
+                            and m.model_id.lower() == source["repo"].lower()
+                        ),
+                        None,
+                    )
+                    if matched is not None:
+                        model_file = os.path.join(matched.resolve(), source["path"])
+                        model_path.parent.mkdir(parents=True, exist_ok=True)
+                        logger.info("Copying %s to %s", model_file, model_path)
+                        model_path.symlink_to(model_file)
+                else:
+                    logger.warning(
+                        "Unrecognized model source: %s, the model may be missing",
+                        source,
+                    )
 
             for f in INPUT_DIR.glob("*"):
                 if f.is_file():
@@ -176,3 +189,13 @@ class ComfyService:
 
             install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
             comfy_workspace.joinpath(".DONE").touch()
+
+
+# register models
+for model in snapshot["models"]:
+    if model.get("disabled"):
+        continue
+    source = model["source"]
+    if source.get("source") != "huggingface" or source["repo"].startswith("datasets/"):
+        continue
+    ComfyService.models.append(HuggingFaceModel(source["repo"], source["commit"]))
