@@ -23,7 +23,7 @@ def main(ctx, verbose):
 
 
 @main.command(
-    name="restore",
+    name="unpack",
     help="Restore the ComfyUI workspace to specified directory",
 )
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
@@ -35,7 +35,7 @@ def main(ctx, verbose):
     type=click.Path(file_okay=False),
 )
 @click.pass_context
-def restore_cmd(ctx, cpack: str, dir: str):
+def unpack_cmd(ctx, cpack: str, dir: str):
     from .package import install
     from rich.console import Console
 
