@@ -359,6 +359,7 @@ def install(
     verbose: int = 0,
 ):
     workspace = Path(workspace)
+    print(f"Installing package {cpack} to {workspace} (verbose={verbose})")
     with tempfile.TemporaryDirectory() as temp_dir:
         pack_dir = Path(temp_dir) / ".cpack"
         shutil.unpack_archive(cpack, pack_dir)
