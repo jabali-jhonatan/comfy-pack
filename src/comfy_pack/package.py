@@ -101,8 +101,7 @@ def install_dependencies(
     workspace: Path,
     verbose: int = 0,
 ):
-    if verbose > 0:
-        print("Installing Python dependencies")
+    print("Installing Python dependencies")
     python_version = snapshot["python"]
     stdout = None if verbose > 0 else subprocess.DEVNULL
     stderr = None if verbose > 1 else subprocess.DEVNULL
@@ -142,6 +141,8 @@ def install_dependencies(
         stdout=stdout,
         stderr=stderr,
     )
+    if verbose > 0:
+        print(f"Installing dependencies from {req_file}")
     subprocess.check_call(
         [
             "uv",
@@ -234,6 +235,7 @@ def retrive_models(
     verbose: int = 0,
 ):
     """Retrieve models from user downloads"""
+    print("Retrieving models")
     models = snapshot.get("models", [])
     if not models:
         return
