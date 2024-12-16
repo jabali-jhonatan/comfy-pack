@@ -154,7 +154,7 @@ def run(ctx, cpack: str, output_dir: str, help: bool):
         console.print("\n[green]✓ Restoring ComfyUI Workspace...[/green]")
         if workspace.exists():
             shutil.rmtree(workspace)
-        install(cpack, workspace)
+        install(cpack, workspace, verbose=ctx.obj["verbose"])
         with open(workspace / "DONE", "w") as f:
             f.write("DONE")
     console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
