@@ -27,18 +27,23 @@ def main():
     type=click.Path(file_okay=False),
 )
 @click.option(
+    "--include-disabled-models",
+    default=False,
+    type=click.BOOL,
+)
+@click.option(
     "--verbose",
     "-v",
     count=True,
     help="Increase verbosity level (use multiple times for more verbosity)",
 )
-def unpack_cmd(cpack: str, dir: str, verbose: int):
+def unpack_cmd(cpack: str, dir: str, include_disabled_models: bool, verbose: int):
     from .package import install
     from rich.console import Console
 
     console = Console()
 
-    install(cpack, dir, verbose=verbose)
+    install(cpack, dir, verbose=verbose, all_models=include_disabled_models)
     console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
     console.print(f"{dir}")
 

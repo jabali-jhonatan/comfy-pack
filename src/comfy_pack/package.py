@@ -174,7 +174,7 @@ def install_dependencies(
 
 def get_search_url(sha: str) -> str:
     """Generate custom search URLs for model on HuggingFace and CivitAI"""
-    base_url = "https://duckduckgo.com/?q="
+    base_url = "https://duckduckgo.com"
     sha = sha.upper()
     hf_query = f"{sha} OR {sha[:10]}"
     hf_query = urllib.parse.quote(hf_query)
@@ -242,6 +242,7 @@ def retrive_models(
     snapshot: dict,
     workspace: Path,
     download: bool = True,
+    all_models: bool = False,
     verbose: int = 0,
 ):
     """Retrieve models from user downloads"""
@@ -267,7 +268,7 @@ def retrive_models(
             create_model_symlink(MODEL_DIR, sha, workspace, filename)
             continue
 
-        if disabled:
+        if disabled and not all_models:
             continue
 
         if not download:
@@ -366,6 +367,7 @@ def install(
     cpack: str | Path,
     workspace: str | Path = "workspace",
     preheat: bool = True,
+    all_models: bool = False,
     verbose: int = 0,
 ):
     workspace = Path(workspace)
@@ -385,13 +387,22 @@ def install(
             elif f.is_dir():
                 shutil.copytree(f, workspace / "input" / f.name, dirs_exist_ok=True)
 
-        retrive_models(snapshot, workspace, verbose=verbose, download=False)
+        retrive_models(
+            snapshot,
+            workspace,
+            verbose=verbose,
+            download=False,
+        )
 
         install_custom_modules(snapshot, workspace, verbose=verbose)
         if preheat:
             from .run import ComfyUIServer
 
-            with ComfyUIServer(str(workspace), verbose=verbose):
+            with ComfyUIServer(
+                str(workspace),
+                verbose=verbose,
+                venv=str(workspace / ".venv"),
+            ) as server:
                 pass
 
-        retrive_models(snapshot, workspace, verbose=verbose)
+        retrive_models(snapshot, workspace, verbose=verbose, all_models=all_models)

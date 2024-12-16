@@ -54,6 +54,7 @@ class ComfyUIServer:
         input_dir: str | None = None,
         host: str = "localhost",
         port: int | None = None,
+        venv: str | None = None,
         verbose: int = 0,
     ) -> None:
         """
@@ -80,6 +81,7 @@ class ComfyUIServer:
                 self.port = 8188
         else:
             self.port = port
+        self.venv = venv
 
     def start(self) -> None:
         """
@@ -100,9 +102,17 @@ class ComfyUIServer:
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        env = os.environ.copy()
+        if self.venv:
+            env["VIRTUAL_ENV"] = self.venv
+            if os.name == "nt":
+                env["PATH"] = f"{self.venv}\\Scripts;{env.get('PATH', '')}"
+            else:
+                env["PATH"] = f"{self.venv}/bin:{env.get('PATH', '')}"
+
         stdout = None if self.verbose > 0 else subprocess.DEVNULL
         command = ["comfy", "--skip-prompt", "tracking", "disable"]
-        subprocess.run(command, check=True, stdout=stdout)
+        subprocess.run(command, check=True, stdout=stdout, env=env)
         logger.info("Successfully disabled Comfy CLI tracking")
 
         logger.info("Preparing directories required by ComfyUI...")
@@ -134,6 +144,7 @@ class ComfyUIServer:
             stdout=stdout,
             stderr=None,
             preexec_fn=preexec_fn,
+            env=env,
         )
 
         if _wait_for_startup(self.host, self.port):
