@@ -402,7 +402,7 @@ def install(
                 str(workspace),
                 verbose=verbose,
                 venv=str(workspace / ".venv"),
-            ) as server:
+            ) as _:
                 pass
 
         retrive_models(snapshot, workspace, verbose=verbose, all_models=all_models)

@@ -70,7 +70,7 @@ class ComfyUIServer:
         self.server_proc: subprocess.Popen | None = None
         self._children_procs: list[psutil.Process] = []
 
-        run_dir = Path(workspace) / "cli_run"
+        run_dir = (Path(workspace) / "cli_run").absolute()
         self.temp_dir = run_dir / "temp"
         self.output_dir = run_dir / "output"
 

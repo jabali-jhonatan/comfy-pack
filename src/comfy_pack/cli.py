@@ -30,6 +30,7 @@ def main():
     "--include-disabled-models",
     default=False,
     type=click.BOOL,
+    is_flag=True,
 )
 @click.option(
     "--verbose",
