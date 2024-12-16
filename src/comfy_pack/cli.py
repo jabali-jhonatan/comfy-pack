@@ -17,7 +17,7 @@ from .hash import get_sha256
 )
 @click.pass_context
 def main(ctx, verbose):
-    """ComfyUI Pack CLI"""
+    """comfy-pack CLI"""
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
 
@@ -88,27 +88,6 @@ def _print_schema(schema, verbose: int = 0):
     Console().print(table)
 
 
-@main.command(name="info")
-@click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
-@click.pass_context
-def info_cmd(ctx, cpack: str):
-    """
-    Display information about the ComfyUI package.
-
-    Example:
-        $ comfy_pack info workspace.cpack.zip
-    """
-    from .utils import generate_input_model
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        pack_dir = Path(temp_dir) / ".cpack"
-        shutil.unpack_archive(cpack, pack_dir)
-        workflow = json.loads((pack_dir / "workflow_api.json").read_text())
-
-    inputs = generate_input_model(workflow)
-    _print_schema(inputs.model_json_schema(), ctx.obj["verbose"])
-
-
 @functools.lru_cache
 def _get_cache_workspace(cpack: str):
     sha = get_sha256(cpack)
@@ -121,11 +100,13 @@ def _get_cache_workspace(cpack: str):
         "allow_extra_args": True,
     },
     help="Run a ComfyUI package with the given inputs",
+    add_help_option=False,
 )
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
 @click.option("--output-dir", "-o", type=click.Path(), default=".")
+@click.option("--help", "-h", is_flag=True, help="Show this message and input schema")
 @click.pass_context
-def run(ctx, cpack: str, output_dir: str):
+def run(ctx, cpack: str, output_dir: str, help: bool):
     from .utils import generate_input_model
     from pydantic import ValidationError
     from rich.console import Console
@@ -143,6 +124,15 @@ def run(ctx, cpack: str, output_dir: str):
 
     input_model = generate_input_model(workflow)
 
+    # If help is requested, show command help and input schema
+    if help:
+        console.print(
+            'Usage: comfy-pack run [OPTIONS] CPACK --input1 "value1" --input2 "value2" ...'
+        )
+        console.print("Run a ComfyUI package with the given inputs:")
+        _print_schema(input_model.model_json_schema(), ctx.obj["verbose"])
+        return 0
+
     try:
         validated_data = input_model(**inputs)
         console.print("[green]✓ Input is valid![/green]")
@@ -152,6 +142,9 @@ def run(ctx, cpack: str, output_dir: str):
         console.print("[red]✗ Validation failed![/red]")
         for error in e.errors():
             console.print(f"- {error['loc'][0]}: {error['msg']}")
+
+        console.print("\n[yellow]Expected inputs:[/yellow]")
+        _print_schema(input_model.model_json_schema(), ctx.obj["verbose"])
         return 1
 
     from .package import install
