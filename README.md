@@ -18,7 +18,7 @@ pip install comfy-pack
 
 
 ### Create a Pack
-1. Search&Install Comfy Pack custom nodes in ComfyUI with Manager
+1. Search&Install `comfy-pack` custom nodes in ComfyUI with Manager
 2. Design your workflow with comfy-pack input/output nodes
 3. Click "Package" button to create `.cpack.zip`
 
