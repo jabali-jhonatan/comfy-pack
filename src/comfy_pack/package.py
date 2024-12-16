@@ -76,6 +76,7 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
         _clone_commit(url, commit_hash, module_dir, verbose=verbose)
 
         if module_dir.joinpath("install.py").exists():
+            env = os.environ.copy()
             venv = workspace / ".venv"
             if venv.exists():
                 python = (
@@ -83,8 +84,17 @@ def install_custom_modules(snapshot, workspace: Path, verbose: int = 0):
                     if os.name == "nt"
                     else venv / "bin" / "python"
                 )
+                if "PATH" in env:
+                    env["PATH"] = f"{str(python.parent)}:{env['PATH']}"
+                else:
+                    env["PATH"] = str(python.parent)
+                env["VIRTUAL_ENV"] = str(venv)
             else:
                 python = Path(sys.executable)
+
+            if verbose > 0:
+                print(f"Installing {directory} custom node")
+                print(f"$ {python.absolute()} install.py")
             subprocess.check_call(
                 [str(python.absolute()), "install.py"],
                 cwd=module_dir,
