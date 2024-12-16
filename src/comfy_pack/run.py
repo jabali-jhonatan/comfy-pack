@@ -74,6 +74,9 @@ class ComfyUIServer:
         self.temp_dir = run_dir / "temp"
         self.output_dir = run_dir / "output"
 
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
         if port is None:
             if _is_port_in_use(8188):
                 self.port = port if port else random.randint(58000, 58999)
