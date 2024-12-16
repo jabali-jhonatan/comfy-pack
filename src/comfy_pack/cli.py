@@ -9,17 +9,9 @@ from .hash import get_sha256
 
 
 @click.group()
-@click.option(
-    "--verbose",
-    "-v",
-    count=True,
-    help="Increase verbosity level (use multiple times for more verbosity)",
-)
-@click.pass_context
-def main(ctx, verbose):
+def main():
     """comfy-pack CLI"""
-    ctx.ensure_object(dict)
-    ctx.obj["verbose"] = verbose
+    pass
 
 
 @main.command(
@@ -34,14 +26,19 @@ def main(ctx, verbose):
     help="target directory to restore the ComfyUI project",
     type=click.Path(file_okay=False),
 )
-@click.pass_context
-def unpack_cmd(ctx, cpack: str, dir: str):
+@click.option(
+    "--verbose",
+    "-v",
+    count=True,
+    help="Increase verbosity level (use multiple times for more verbosity)",
+)
+def unpack_cmd(cpack: str, dir: str, verbose: int):
     from .package import install
     from rich.console import Console
 
     console = Console()
 
-    install(cpack, dir, ctx.obj["verbose"])
+    install(cpack, dir, verbose=verbose)
     console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
     console.print(f"{dir}")
 
@@ -105,8 +102,14 @@ def _get_cache_workspace(cpack: str):
 @click.argument("cpack", type=click.Path(exists=True, dir_okay=False))
 @click.option("--output-dir", "-o", type=click.Path(), default=".")
 @click.option("--help", "-h", is_flag=True, help="Show this message and input schema")
+@click.option(
+    "--verbose",
+    "-v",
+    count=True,
+    help="Increase verbosity level (use multiple times for more verbosity)",
+)
 @click.pass_context
-def run(ctx, cpack: str, output_dir: str, help: bool):
+def run(ctx, cpack: str, output_dir: str, help: bool, verbose: int):
     from .utils import generate_input_model
     from pydantic import ValidationError
     from rich.console import Console
@@ -130,7 +133,7 @@ def run(ctx, cpack: str, output_dir: str, help: bool):
             'Usage: comfy-pack run [OPTIONS] CPACK --input1 "value1" --input2 "value2" ...'
         )
         console.print("Run a ComfyUI package with the given inputs:")
-        _print_schema(input_model.model_json_schema(), ctx.obj["verbose"])
+        _print_schema(input_model.model_json_schema(), verbose)
         return 0
 
     try:
@@ -144,7 +147,7 @@ def run(ctx, cpack: str, output_dir: str, help: bool):
             console.print(f"- {error['loc'][0]}: {error['msg']}")
 
         console.print("\n[yellow]Expected inputs:[/yellow]")
-        _print_schema(input_model.model_json_schema(), ctx.obj["verbose"])
+        _print_schema(input_model.model_json_schema(), verbose)
         return 1
 
     from .package import install
@@ -154,7 +157,7 @@ def run(ctx, cpack: str, output_dir: str, help: bool):
         console.print("\n[green]✓ Restoring ComfyUI Workspace...[/green]")
         if workspace.exists():
             shutil.rmtree(workspace)
-        install(cpack, workspace, verbose=ctx.obj["verbose"])
+        install(cpack, workspace, verbose=verbose)
         with open(workspace / "DONE", "w") as f:
             f.write("DONE")
     console.print("\n[green]✓ ComfyUI Workspace is restored![/green]")
@@ -162,14 +165,14 @@ def run(ctx, cpack: str, output_dir: str, help: bool):
 
     from .run import ComfyUIServer, run_workflow
 
-    with ComfyUIServer(str(workspace.absolute()), verbose=ctx.obj["verbose"]) as server:
+    with ComfyUIServer(str(workspace.absolute()), verbose=verbose) as server:
         console.print("\n[green]✓ ComfyUI is launched in the background![/green]")
         results = run_workflow(
             server.host,
             server.port,
             workflow,
             Path(output_dir).absolute(),
-            verbose=ctx.obj["verbose"],
+            verbose=verbose,
             **validated_data.model_dump(),
         )
         console.print("\n[green]✓ Workflow is executed successfully![/green]")
