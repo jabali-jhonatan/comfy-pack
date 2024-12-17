@@ -20,6 +20,7 @@ from server import PromptServer
 
 from comfy_pack.hash import async_batch_get_sha256
 from comfy_pack.model_helper import alookup_model_source
+from comfy_pack.utils import get_self_git_commit
 
 ZPath = Union[Path, zipfile.Path]
 TEMP_FOLDER = Path(__file__).parent.parent / "temp"
@@ -515,6 +516,7 @@ async def build_bento(request):
                 "service:ComfyService",
                 name=data["bento_name"],
                 build_ctx=temp_dir,
+                labels={"comfy-pack-version": get_self_git_commit() or "unknown"},
                 models=[m["model_tag"] for m in models if "model_tag" in m],
                 docker={
                     "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 if TYPE_CHECKING:
@@ -258,3 +259,44 @@ def retrieve_workflow_outputs(
     if len(outs) == 1:
         return outs[0]
     return outs
+
+
+def get_self_git_commit() -> str | None:
+    """Get current git commit of the repository.
+
+    Returns:
+        str | None: Git commit hash in format "{hash}[-dirty]" or None if not in a git repo
+    """
+    try:
+        repo_root = Path(__file__).parent.parent.parent
+
+        # Check if we're in a git repo
+        subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+        )
+
+        # Get current commit hash
+        commit_hash = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        # Check if working directory is clean
+        is_dirty = (
+            subprocess.run(
+                ["git", "diff", "--quiet"],
+                cwd=repo_root,
+                check=False,
+            ).returncode
+            != 0
+        )
+
+        return f"{commit_hash}-dirty" if is_dirty else commit_hash
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return None
