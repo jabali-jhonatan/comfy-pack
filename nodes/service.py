@@ -18,7 +18,7 @@ from bentoml.models import HuggingFaceModel
 import comfy_pack
 import comfy_pack.run
 
-REQUEST_TIMEOUT = 360
+REQUEST_TIMEOUT = 3600
 BASE_DIR = Path(__file__).parent
 COPY_THRESHOLD = 10 * 1024 * 1024
 INPUT_DIR = BASE_DIR / "input"
