@@ -30,9 +30,6 @@ EXISTING_COMFYUI_SERVER = os.environ.get("COMFYUI_SERVER")
 with BASE_DIR.joinpath("workflow_api.json").open() as f:
     workflow = json.load(f)
 
-with BASE_DIR.joinpath("snapshot.json").open("rb") as f:
-    snapshot = json.load(f)
-
 InputModel = comfy_pack.generate_input_model(workflow)
 app = fastapi.FastAPI()
 
@@ -67,6 +64,14 @@ def _watch_server(server: comfy_pack.run.ComfyUIServer):
                 )
                 os.kill(os.getpid(), signal.SIGTERM)
             break
+
+
+if not EXISTING_COMFYUI_SERVER:
+    # register models
+    with BASE_DIR.joinpath("snapshot.json").open("rb") as f:
+        snapshot = json.load(f)
+else:
+    snapshot = {}
 
 
 @bentoml.mount_asgi_app(app, path="/comfy")
@@ -192,11 +197,13 @@ class ComfyService:
             comfy_workspace.joinpath(".DONE").touch()
 
 
-# register models
-for model in snapshot["models"]:
-    if model.get("disabled"):
-        continue
-    source = model["source"]
-    if source.get("source") != "huggingface" or source["repo"].startswith("datasets/"):
-        continue
-    ComfyService.models.append(HuggingFaceModel(source["repo"], source["commit"]))
+if not EXISTING_COMFYUI_SERVER:
+    for model in snapshot["models"]:
+        if model.get("disabled"):
+            continue
+        source = model["source"]
+        if source.get("source") != "huggingface" or source["repo"].startswith(
+            "datasets/"
+        ):
+            continue
+        ComfyService.models.append(HuggingFaceModel(source["repo"], source["commit"]))
