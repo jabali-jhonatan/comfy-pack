@@ -133,11 +133,12 @@ class ComfyUIServer:
             self.temp_dir,
             "--port",
             str(self.port),
-            "--listen",
-            self.host,
         ]
         if self.input_dir:
             command.extend(["--input-directory", self.input_dir])
+
+        if self.host != "localhost":
+            command.extend(["--listen", self.host])
 
         def preexec_fn():
             os.setpgrp()
