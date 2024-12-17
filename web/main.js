@@ -981,7 +981,7 @@ app.registerExtension({
 					action: packageAction,
 					tooltip: "Comfy-Pack",
 					content: "Package",
-					classList: "comfyui-button comfyui-menu-mobile-collapse"
+					classList: "comfyui-button comfyui-menu-mobile-collapse primary"
 				}).element,
       new(await import("../../scripts/ui/components/button.js")).ComfyButton({
       	icon: "package-variant",
