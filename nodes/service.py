@@ -167,6 +167,7 @@ class ComfyService:
                             for m in ComfyService.models
                             if isinstance(m, HuggingFaceModel)
                             and m.model_id.lower() == source["repo"].lower()
+                            and source["commit"].lower() == m.revision.lower()
                         ),
                         None,
                     )
