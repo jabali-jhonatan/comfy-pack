@@ -199,6 +199,8 @@ class ComfyService:
 
 if not EXISTING_COMFYUI_SERVER:
     for model in snapshot["models"]:
+        if True:
+            continue
         if model.get("disabled"):
             continue
         source = model["source"]
