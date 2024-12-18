@@ -28,7 +28,7 @@ comfy-pack unpack workflow.cpack.zip
 
 Focus on creating. Let Comfy-Pack handle the rest.
 
-## Quick Start
+## Usages
 
 ### Installation
 
