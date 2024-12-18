@@ -2,7 +2,7 @@
 
 
 # Comfy-Pack: Package and Deploy ComfyUI Workflows
-<img width="870" alt="banner" src="https://github.com/user-attachments/assets/0658e8cc-8d6b-428e-bade-c72264982a24" />
+<img width="952" alt="banner" src="https://github.com/user-attachments/assets/1ab2c7a7-55da-4fa4-a821-db7ba720fbc9" />
 
 
 A comprehensive toolkit for reliably packing and unpacking environments for ComfyUI workflows. 
