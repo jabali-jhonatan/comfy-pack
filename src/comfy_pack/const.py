@@ -16,3 +16,5 @@ SHA_CACHE_FILE = CPACK_HOME / "sha_cache.json"
 MODEL_SOURCE_CACHE_FILE = CPACK_HOME / "model_source_cache.json"
 
 COMFYUI_REPO = "https://github.com/comfyanonymous/ComfyUI.git"
+COMFY_PACK_REPO = "https://github.com/bentoml/comfy-pack.git"
+COMFYUI_MANAGER_REPO = "https://github.com/ltdrdata/ComfyUI-Manager.git"

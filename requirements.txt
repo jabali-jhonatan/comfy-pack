@@ -2,3 +2,4 @@ bentoml
 fastapi
 comfy-cli
 duckduckgo-search
+uv

@@ -3,15 +3,234 @@ import functools
 import json
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tempfile
-from .const import WORKSPACE_DIR
+from .const import WORKSPACE_DIR, COMFYUI_REPO, COMFY_PACK_REPO, COMFYUI_MANAGER_REPO
 from .hash import get_sha256
+from .utils import get_self_git_commit
+
+
+def _ensure_uv() -> None:
+    """Ensure uv is installed, raise error if not."""
+    try:
+        subprocess.run(
+            ["uv", "--version"],
+            check=True,
+            capture_output=True,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        raise RuntimeError(
+            "uv is not installed. Please install it first:\n"
+            "curl -LsSf https://astral.sh/uv/install.sh | sh"
+        )
 
 
 @click.group()
 def main():
     """comfy-pack CLI"""
     pass
+
+
+@main.command(
+    name="init",
+    help="Install latest ComfyUI and comfy-pack custom nodes and create a virtual environment",
+)
+@click.option(
+    "--dir",
+    "-d",
+    default="ComfyUI",
+    help="Target directory to install ComfyUI",
+    type=click.Path(file_okay=False),
+)
+@click.option(
+    "--verbose",
+    "-v",
+    count=True,
+    help="Increase verbosity level",
+)
+def init(dir: str, verbose: int):
+    from rich.console import Console
+    import os
+
+    console = Console()
+
+    # Check if directory path is valid
+    try:
+        install_dir = Path(dir).absolute()
+        if install_dir.exists() and not install_dir.is_dir():
+            console.print(f"[red]Error: {dir} exists but is not a directory[/red]")
+            return 1
+
+        # Check if directory is empty or contains ComfyUI
+        if install_dir.exists():
+            contents = list(install_dir.iterdir())
+            if contents and not (install_dir / ".git").exists():
+                console.print(
+                    f"[red]Error: Directory {dir} is not empty and doesn't appear to be a ComfyUI installation[/red]"
+                )
+                return 1
+    except Exception as e:
+        console.print(f"[red]Error: Invalid directory path - {str(e)}[/red]")
+        return 1
+
+    # Check git installation
+    try:
+        subprocess.run(
+            ["git", "--version"],
+            check=True,
+            capture_output=True,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        console.print("[red]Error: git is not installed or not in PATH[/red]")
+        return 1
+
+    # Check if we have write permissions
+    try:
+        if not install_dir.exists():
+            install_dir.mkdir(parents=True)
+        test_file = install_dir / ".write_test"
+        test_file.touch()
+        test_file.unlink()
+    except (OSError, PermissionError) as e:
+        console.print(f"[red]Error: No write permission in {dir} - {str(e)}[/red]")
+        return 1
+
+    # Check if Python version is compatible
+    if sys.version_info < (3, 8):
+        console.print("[red]Error: Python 3.8 or higher is required[/red]")
+        return 1
+
+    # Check if uv is installed
+    try:
+        _ensure_uv()
+    except RuntimeError as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        return 1
+
+    # Check if enough disk space is available (rough estimate: 2GB)
+    try:
+        free_space = shutil.disk_usage(install_dir).free
+        if free_space < 2 * 1024 * 1024 * 1024:  # 2GB in bytes
+            console.print(
+                "[yellow]Warning: Less than 2GB free disk space available[/yellow]"
+            )
+    except Exception as e:
+        console.print(
+            f"[yellow]Warning: Could not check free disk space - {str(e)}[/yellow]"
+        )
+
+    # Clone ComfyUI if not exists
+    if not (install_dir / ".git").exists():
+        console.print("[green]Cloning ComfyUI...[/green]")
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                COMFYUI_REPO,
+                str(install_dir),
+            ],
+            check=True,
+        )
+
+    # Update ComfyUI
+    console.print("[green]Updating ComfyUI...[/green]")
+    subprocess.run(
+        ["git", "pull"],
+        cwd=install_dir,
+        check=True,
+    )
+
+    # Create and activate venv
+    venv_dir = install_dir / ".venv"
+    console.print("[green]Creating virtual environment with uv...[/green]")
+    if venv_dir.exists():
+        shutil.rmtree(venv_dir)
+    subprocess.run(
+        ["uv", "venv", str(venv_dir)],
+        check=True,
+    )
+
+    # Get python path for future use
+    if sys.platform == "win32":
+        python = str(venv_dir / "Scripts" / "python.exe")
+
+    else:
+        python = str(venv_dir / "bin" / "python")
+
+    # Install requirements with uv
+    console.print("[green]Installing ComfyUI requirements with uv...[/green]")
+    subprocess.run(
+        ["uv", "pip", "install", "pip", "--upgrade"],
+        env={
+            "VIRTUAL_ENV": str(venv_dir),
+            "PATH": str(venv_dir / "bin") + os.pathsep + os.environ["PATH"],
+        },
+        check=True,
+    )
+    subprocess.run(
+        ["uv", "pip", "install", "-r", str(install_dir / "requirements.txt")],
+        env={
+            "VIRTUAL_ENV": str(venv_dir),
+            "PATH": str(venv_dir / "bin") + os.pathsep + os.environ["PATH"],
+        },
+        check=True,
+    )
+
+    # Install comfy-pack as custom node
+    console.print("[green]Installing comfy-pack custom nodes...[/green]")
+    custom_nodes_dir = install_dir / "custom_nodes"
+    custom_nodes_dir.mkdir(exist_ok=True)
+
+    comfyui_manager_dir = custom_nodes_dir / "ComfyUI-Manager"
+    if not (comfyui_manager_dir / ".git").exists():
+        # Clone ComfyUI-Manager
+        subprocess.run(
+            ["git", "clone", COMFYUI_MANAGER_REPO, str(comfyui_manager_dir)],
+            check=True,
+        )
+
+    comfy_pack_dir = custom_nodes_dir / "comfy-pack"
+    if not (comfy_pack_dir / ".git").exists():
+        # Clone comfy-pack
+        subprocess.run(
+            ["git", "clone", COMFY_PACK_REPO, str(comfy_pack_dir)],
+            check=True,
+        )
+
+    # Update comfy-pack
+    subprocess.run(
+        ["git", "pull"],
+        cwd=comfy_pack_dir,
+        check=True,
+    )
+
+    # Install comfy-pack requirements
+    if (comfy_pack_dir / "requirements.txt").exists():
+        subprocess.run(
+            [
+                python,
+                "-m",
+                "pip",
+                "install",
+                "-r",
+                str(comfy_pack_dir / "requirements.txt"),
+            ],
+            check=True,
+        )
+
+    version = get_self_git_commit() or "unknown"
+    console.print(
+        f"\n[green]✓ Installation completed! (comfy-pack version: {version})[/green]"
+    )
+    console.print(f"ComfyUI directory: {install_dir}")
+
+    console.print(
+        "\n[green]Next steps:[/green]\n"
+        f"1. cd {dir}\n"
+        "2. source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate\n"
+        "3. python main.py"
+    )
 
 
 @main.command(
