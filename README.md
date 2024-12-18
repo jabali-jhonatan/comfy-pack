@@ -1,10 +1,14 @@
-# Comfy-Pack: Package and Deploy ComfyUI Workflow
+
+
+
+# Comfy-Pack: Package and Deploy ComfyUI Workflows
+
 
 A comprehensive toolkit for reliably packing and unpacking environments for ComfyUI workflows. 
 
-- 📦 **Pack workflow environments as an artifact:** Saves the workflow environment in a `.cpack.zip` artifact with Python package versions, ComfyUI and custom node revisions, and model hashes.
-- ✨ **Unpack artifact to recreate workflow environments** Unpacks the `.cpack.zip` artifact to recreate the same environment with the exact Python package versions, ComfyUI and custom node revisions, and model weights.
-- 🚀 **Deploy workflow as an API:** Deploys the workflow as a RESTful API with customizable input and output parameters.
+- 📦 **Pack workflow environments as artifacts:** Saves the workflow environment in a `.cpack.zip` artifact with Python package versions, ComfyUI and custom node revisions, and model hashes.
+- ✨ **Unpack artifacts to recreate workflow environments:** Unpacks the `.cpack.zip` artifact to recreate the same environment with the exact Python package versions, ComfyUI and custom node revisions, and model weights.
+- 🚀 **Deploy workflows as APIs:** Deploys the workflow as a RESTful API with customizable input and output parameters.
 
 ## Motivations
 
