@@ -1,13 +1,7 @@
-
-
-
 # Comfy-Pack: Package and Deploy ComfyUI Workflows
-> ⚠️ **WARNING**: This project is under active development and comes with NO QUALITY GUARANTEE. 
-> We are working on stabilizing it.  
-
+> ⚠️ **WARNING**: This project is under active development. 
 
 <img width="952" alt="banner" src="https://github.com/user-attachments/assets/1ab2c7a7-55da-4fa4-a821-db7ba720fbc9" />
-
 
 A comprehensive toolkit for reliably packing and unpacking environments for ComfyUI workflows. 
 
@@ -18,17 +12,21 @@ A comprehensive toolkit for reliably packing and unpacking environments for Comf
 
 ## Motivations
 
-We learned from our community that packaging and sharing a ComfyUI workflow is currently difficult due to challenges in reliably replicating the workflow environment. To reliably replicate a workflow elsewhere, one must recreate the environment with the exact python packages, custom nodes revisions, and the identical models. This process can be tedious, error-prone, and time-consuming.
+When sharing ComfyUI workflows to others, your audiences or team member, you've likely heard these responses:
+- "Custom Node not found"
+- "Cannot find the model file"
+- "Missing Python dependencies"
 
-To address this, we built comfy-pack – a tool designed to simplify this process. As a ComfyUI Manager plugin, comfy-pack lets you package an entire workflow with just one click in the UI. Behind the scenes, it automatically locks and records everything you need: Python package versions, custom node revisions, model hashes, and any static assets required for the workflow. All of this is saved into a single `.cpack.zip` artifact.
+These are fundamental challenges in workflow sharing – every component must match exactly: custom nodes, model files, and Python dependencies.
 
-The same environment can be recreated by unpacking the `.cpack.zip` artifact with a simple command:
+We learned it from our communit, and developed Comfy-Pack to address this directly. With a single click, it captures and locks your entire workflow environment into a `.cpack.zip` file, including Python packages, custom nodes, model hashes, and required assets.
 
+Users can recreate the exact environment with one command:
 ```bash
 comfy-pack unpack workflow.cpack.zip
 ```
 
-Once this command completes, the environment is fully set up to reliably reproduce the original workflow.
+Focus on creating. Let Comfy-Pack handle the rest.
 
 ## Quick Start
 
@@ -47,16 +45,16 @@ git clone https://github.com/bentoml/comfy-pack.git
 
 ### Pack a ComfyUI workflow
 1. Click "Package" button to create `.cpack.zip`
-2. (Optional) select the models that you want to include (only model hash will be recorded)
+2. (Optional) select the models that you want to include (only model hash will be recorded, so you wont get a 100GB zip file)
+![pack](https://github.com/user-attachments/assets/e08bbed2-84dc-474e-a701-6c6db16edf76)
 
 
 
 ### Unpack a ComfyUI workflow
 ```bash
-# Restore a ComfyUI project from cpack files.
-comfy-pack unpack workflow.cpack.zip --dir ./
+# Restore the full ComfyUI directory from cpack files.
+comfy-pack unpack workflow.cpack.zip
 ```
-
 
 
 ### Deploy a workflow as an API
@@ -95,8 +93,7 @@ comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4
 </details>
 
 
-
-## Parameter Nodes
+## Custom Node List
 
 ComfyPack provides custom nodes for standardizing inputs:
 - ImageInput: provides `image` type input, similar to official `LoadImage` node
@@ -109,8 +106,10 @@ ComfyPack provides custom nodes for standardizing inputs:
 
 These nodes help define clear interfaces for your workflow.
 
-## Docker Support
-Under development
+## 🚀 Roadmap
+- Docker Support
+- local cpack manager and Version Control
+- Enhanced service capabilities
 
 
 ## Examples
