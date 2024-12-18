@@ -42,25 +42,24 @@ or install from Git:
 git clone https://github.com/bentoml/comfy-pack.git
 ```
 
-### Pack a ComfyUI workflow
+### 📦 Pack a ComfyUI workflow and its environment
 1. Click "Package" button to create `.cpack.zip`
 2. (Optional) select the models that you want to include (only model hash will be recorded, so you wont get a 100GB zip file)
 ![pack](https://github.com/user-attachments/assets/e08bbed2-84dc-474e-a701-6c6db16edf76)
 
 
-### Unpack a ComfyUI workflow
+### ✨ Unpack the ComfyUI environments
 ```bash
-# Restore the full ComfyUI directory from cpack files.
 comfy-pack unpack workflow.cpack.zip
 ```
 For example cpack files, check our [examples folder](examples/).
 
-### Install the newest ComfyUI & Init a project from sketch
+### 🏗️ Install the newest ComfyUI & init a project from sketch
 ```bash
 comfy-pack init
 ```
 
-### Deploy a workflow as an API
+### 🚀 Deploy a workflow as an API
 <details>
 <summary> 1. annotate input & output </summary>
   
@@ -109,6 +108,7 @@ ComfyPack provides custom nodes for standardizing inputs:
 These nodes help define clear interfaces for your workflow.
 
 ## 🚀 Roadmap
+- better UX
 - Docker Support
 - local cpack manager and Version Control
 - Enhanced service capabilities
