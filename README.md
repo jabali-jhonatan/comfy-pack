@@ -2,6 +2,10 @@
 
 
 # Comfy-Pack: Package and Deploy ComfyUI Workflows
+> ⚠️ **WARNING**: This project is under active development and comes with NO QUALITY GUARANTEE. 
+> We are working on stabilizing it.  
+
+
 <img width="952" alt="banner" src="https://github.com/user-attachments/assets/1ab2c7a7-55da-4fa4-a821-db7ba720fbc9" />
 
 
