@@ -42,12 +42,10 @@ or install from Git:
 git clone https://github.com/bentoml/comfy-pack.git
 ```
 
-
 ### Pack a ComfyUI workflow
 1. Click "Package" button to create `.cpack.zip`
 2. (Optional) select the models that you want to include (only model hash will be recorded, so you wont get a 100GB zip file)
 ![pack](https://github.com/user-attachments/assets/e08bbed2-84dc-474e-a701-6c6db16edf76)
-
 
 
 ### Unpack a ComfyUI workflow
@@ -55,7 +53,12 @@ git clone https://github.com/bentoml/comfy-pack.git
 # Restore the full ComfyUI directory from cpack files.
 comfy-pack unpack workflow.cpack.zip
 ```
+For example cpack files, check our [examples folder](examples/).
 
+### Install the newest ComfyUI & Init a project from sketch
+```bash
+comfy-pack init
+```
 
 ### Deploy a workflow as an API
 <details>
@@ -89,7 +92,6 @@ comfy-pack run workflow.cpack.zip --src-image image.png --video video.mp4
 
 ![image](https://github.com/user-attachments/assets/1ffa31fc-1f50-4ea7-a47e-7dae3b874273)
 
-
 </details>
 
 
@@ -112,16 +114,8 @@ These nodes help define clear interfaces for your workflow.
 - Enhanced service capabilities
 
 
-## Examples
-
-Check our [examples folder](examples/) for:
-- Basic workflow packaging
-- Parameter configuration
-- API integration
-- Docker deployment
-
 ## License
-MIT License
+Apache 2.0
 
 ## Community
 - Issues & Feature Requests: GitHub Issues
