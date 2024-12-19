@@ -10,14 +10,13 @@ comfy-pack is a comprehensive toolkit for reliably packing and unpacking environ
 - 🚀 **Deploy workflows as APIs:** Deploys the workflow as a RESTful API with customizable input and output parameters.
 
 ## Motivations
-
-When sharing ComfyUI workflows to others, your audience or team members, you've likely heard these responses:
+ComfyUI Manager is great for find missing custom nodes. But when sharing ComfyUI workflows to others(your audience or team members), you've still likely heard these responses:
 
 - "Custom Node not found"
-- "Cannot find the model file"
+- "Cannot find the correct model file"
 - "Missing Python dependencies"
 
-These are fundamental challenges in workflow sharing – every component must match exactly: custom nodes, model files, and Python dependencies.
+These are fundamental challenges in workflow sharing – every component should match exactly: custom nodes, model files, and Python dependencies. Modern pacakge managers like npm and poetry intruduced "lock" feature, which means record the exact version for every requirement. ComfyUI Manager isn't designed for that.
 
 We learned it from our community and developed comfy-pack to address these problems. With a single click, it captures and locks your entire workflow environment into a `.cpack.zip` file, including Python packages, custom nodes, model hashes, and required assets.
 
