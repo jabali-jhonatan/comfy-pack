@@ -175,7 +175,7 @@ Follow [the instructions here](https://docs.bentoml.com/en/latest/scale-with-ben
 
 </details>
 
-## 🚀 Roadmap
+## Roadmap
 
 This project is under active development. Currently we are working on:
 
@@ -184,11 +184,11 @@ This project is under active development. Currently we are working on:
 - Local `.cpack` file management with version control
 - Enhanced service capabilities
 
-## 👥 Community
+## Community
 
 comfy-pack is actively maintained by the BentoML team. Feel free to reach out 👉 [Join our Slack community!](https://l.bentoml.com/join-slack)
 
-## 🤝 Contributing
+## Contributing
 
 As an open-source project, we welcome contributions of all kinds, such as new features, bug fixes, and documentation. Here are some of the ways to contribute:
 
