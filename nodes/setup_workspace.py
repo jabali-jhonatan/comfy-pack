@@ -11,7 +11,7 @@ virtualenv = os.environ.get("VIRTUAL_ENV")
 if virtualenv and "--reload" not in sys.argv:
     print("Re-executing in virtualenv:", virtualenv)
     venv_python = os.path.join(virtualenv, "bin/python3")
-    os.execl(venv_python, venv_python, *sys.argv[1:], "--reload")
+    os.execl(venv_python, venv_python, *sys.argv, "--reload")
 
 # The script path is ./env/docker/setup_script
 SRC_DIR = Path(__file__).parent.parent.parent / "src"
