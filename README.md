@@ -1,6 +1,7 @@
 # Comfy-Pack: Making ComfyUI Workflows Shareable
 
-![image](https://github.com/user-attachments/assets/f2e55cd5-9efe-4887-896e-5b80b37318c5)
+![banner2](https://github.com/user-attachments/assets/14a7e469-6683-4818-9d54-5e5a8d0aa454)
+
 
 comfy-pack is a comprehensive toolkit for reliably packing and unpacking environments for ComfyUI workflows. 
 
