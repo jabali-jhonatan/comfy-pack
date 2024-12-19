@@ -1,6 +1,6 @@
 # Comfy-Pack: Making ComfyUI Workflows Portable
 
-<img width="952" alt="banner" src="https://github.com/user-attachments/assets/1ab2c7a7-55da-4fa4-a821-db7ba720fbc9" />
+![image](https://github.com/user-attachments/assets/f2e55cd5-9efe-4887-896e-5b80b37318c5)
 
 A comprehensive toolkit for reliably packing and unpacking environments for ComfyUI workflows. 
 
