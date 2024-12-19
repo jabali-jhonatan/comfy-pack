@@ -1,5 +1,4 @@
 # Comfy-Pack: Package and Deploy ComfyUI Workflows
-> ⚠️ **WARNING**: This project is under active development. 
 
 <img width="952" alt="banner" src="https://github.com/user-attachments/assets/1ab2c7a7-55da-4fa4-a821-db7ba720fbc9" />
 
@@ -108,6 +107,7 @@ ComfyPack provides custom nodes for standardizing inputs:
 These nodes help define clear interfaces for your workflow.
 
 ## 🚀 Roadmap
+This project is under active development.
 - better UX
 - Docker Support
 - local cpack manager and Version Control
