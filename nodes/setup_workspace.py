@@ -36,53 +36,17 @@ def _get_workspace() -> tuple[Path, dict]:
 
 def prepare_comfy_workspace():
     import shutil
-    from typing import cast
-
-    import bentoml
-    from bentoml.models import HuggingFaceModel
 
     from comfy_pack.package import install_comfyui, install_custom_modules
 
     verbose = int("BENTOML_DEBUG" in os.environ)
     comfy_workspace, snapshot = _get_workspace()
-    service = bentoml.load(str(SRC_DIR.parent))
 
     if not comfy_workspace.joinpath(".DONE").exists():
         if comfy_workspace.exists():
             print("Removing existing workspace")
             shutil.rmtree(comfy_workspace, ignore_errors=True)
         install_comfyui(snapshot, comfy_workspace, verbose=verbose)
-
-        for model in snapshot["models"]:
-            if model.get("disabled", False):
-                continue
-            model_path = comfy_workspace / cast(str, model["filename"])
-            if model_tag := model.get("model_tag"):
-                model_path.parent.mkdir(parents=True, exist_ok=True)
-                bento_model = bentoml.models.get(model_tag)
-                model_file = bento_model.path_of("model.bin")
-                print(f"Copying {model_file} to {model_path}")
-                model_path.symlink_to(model_file)
-            elif (source := model["source"]).get("source") == "huggingface":
-                matched = next(
-                    (
-                        m
-                        for m in service.models
-                        if isinstance(m, HuggingFaceModel)
-                        and m.model_id.lower() == source["repo"].lower()
-                        and source["commit"].lower() == m.revision.lower()
-                    ),
-                    None,
-                )
-                if matched is not None:
-                    model_file = os.path.join(matched.resolve(), source["path"])
-                    model_path.parent.mkdir(parents=True, exist_ok=True)
-                    print(f"Copying {model_file} to {model_path}")
-                    model_path.symlink_to(model_file)
-            else:
-                print(
-                    f"WARN: Unrecognized model source: {source}, the model may be missing"
-                )
 
         for f in INPUT_DIR.glob("*"):
             if f.is_file():

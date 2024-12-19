@@ -8,7 +8,7 @@ import threading
 import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import bentoml
 import fastapi
@@ -136,6 +136,47 @@ class ComfyService:
             logger.info("server stopped")
             self.watch_thread.join()
             logger.info("Watch thread finished")
+
+    @bentoml.on_deployment
+    @staticmethod
+    def prepare_models():
+        if EXISTING_COMFYUI_SERVER:
+            return
+        comfy_workspace = _get_workspace()
+        if not comfy_workspace.joinpath(".DONE").exists():
+            raise RuntimeError("ComfyUI workspace is not ready")
+        for model in snapshot["models"]:
+            if model.get("disabled", False):
+                continue
+            model_path = comfy_workspace / cast(str, model["filename"])
+            if model_path.exists():
+                continue
+            if model_tag := model.get("model_tag"):
+                model_path.parent.mkdir(parents=True, exist_ok=True)
+                bento_model = bentoml.models.get(model_tag)
+                model_file = bento_model.path_of("model.bin")
+                print(f"Copying {model_file} to {model_path}")
+                model_path.symlink_to(model_file)
+            elif (source := model["source"]).get("source") == "huggingface":
+                matched = next(
+                    (
+                        m
+                        for m in ComfyService.models
+                        if isinstance(m, HuggingFaceModel)
+                        and m.model_id.lower() == source["repo"].lower()
+                        and source["commit"].lower() == m.revision.lower()
+                    ),
+                    None,
+                )
+                if matched is not None:
+                    model_file = os.path.join(matched.resolve(), source["path"])
+                    model_path.parent.mkdir(parents=True, exist_ok=True)
+                    print(f"Copying {model_file} to {model_path}")
+                    model_path.symlink_to(model_file)
+            else:
+                print(
+                    f"WARN: Unrecognized model source: {source}, the model may be missing"
+                )
 
 
 if not EXISTING_COMFYUI_SERVER:
