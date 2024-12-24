@@ -10,10 +10,9 @@ import socket
 import subprocess
 import time
 import uuid
+import sys
 from pathlib import Path
 from typing import Any, Union
-
-import psutil
 
 from .utils import populate_workflow, retrieve_workflow_outputs
 
@@ -68,7 +67,6 @@ class ComfyUIServer:
         self.verbose = verbose
         self.host = host
         self.server_proc: subprocess.Popen | None = None
-        self._children_procs: list[psutil.Process] = []
 
         run_dir = (Path(workspace) / "cli_run").absolute()
         self.temp_dir = run_dir / "temp"
@@ -122,11 +120,8 @@ class ComfyUIServer:
 
         logger.info("Starting ComfyUI in the background...")
         command = [
-            "comfy",
-            "--workspace",
-            self.workspace,
-            "launch",
-            "--",
+            sys.executable,
+            "main.py",
             "--output-directory",
             self.output_dir,
             "--temp-directory",
@@ -149,6 +144,7 @@ class ComfyUIServer:
             stderr=None,
             preexec_fn=preexec_fn,
             env=env,
+            cwd=self.workspace,
         )
 
         if _wait_for_startup(self.host, self.port):
@@ -156,18 +152,12 @@ class ComfyUIServer:
             logger.info("Successfully started ComfyUI in the background")
         else:
             logger.error("Failed to start ComfyUI in the background")
-        self._children_procs = psutil.Process(self.server_proc.pid).children(
-            recursive=True
-        )
 
     def is_running(self) -> bool:
         if self.server_proc is None:
             return False
         if self.server_proc.poll() is not None:
             return False
-        for child in self._children_procs:
-            if not child.is_running():
-                return False
         return True
 
     def stop(self) -> None:
@@ -184,12 +174,8 @@ class ComfyUIServer:
         proc = self.server_proc
         self.server_proc = None
         logger.info("Stopping ComfyUI...")
-        for child in self._children_procs:
-            child.terminate()
-            child.wait()
         proc.terminate()
         proc.wait()
-        self._children_procs.clear()
         logger.info("Successfully stopped ComfyUI")
 
         logger.info("Cleaning up temporary directory...")
