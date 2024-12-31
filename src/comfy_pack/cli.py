@@ -1,12 +1,15 @@
-import click
 import functools
 import json
-from pathlib import Path
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
-from .const import WORKSPACE_DIR, COMFYUI_REPO, COMFY_PACK_REPO, COMFYUI_MANAGER_REPO
+from pathlib import Path
+
+import click
+
+from .const import COMFY_PACK_REPO, COMFYUI_MANAGER_REPO, COMFYUI_REPO, WORKSPACE_DIR
 from .hash import get_sha256
 from .utils import get_self_git_commit
 
@@ -50,8 +53,9 @@ def main():
     help="Increase verbosity level",
 )
 def init(dir: str, verbose: int):
-    from rich.console import Console
     import os
+
+    from rich.console import Console
 
     console = Console()
 
@@ -258,8 +262,9 @@ def init(dir: str, verbose: int):
     help="Increase verbosity level (use multiple times for more verbosity)",
 )
 def unpack_cmd(cpack: str, dir: str, include_disabled_models: bool, verbose: int):
-    from .package import install
     from rich.console import Console
+
+    from .package import install
 
     console = Console()
 
@@ -276,8 +281,8 @@ def unpack_cmd(cpack: str, dir: str, include_disabled_models: bool, verbose: int
 
 
 def _print_schema(schema, verbose: int = 0):
-    from rich.table import Table
     from rich.console import Console
+    from rich.table import Table
 
     table = Table(title="")
 
@@ -335,9 +340,10 @@ def _get_cache_workspace(cpack: str):
 )
 @click.pass_context
 def run(ctx, cpack: str, output_dir: str, help: bool, verbose: int):
-    from .utils import generate_input_model
     from pydantic import ValidationError
     from rich.console import Console
+
+    from .utils import generate_input_model
 
     inputs = dict(
         zip([k.lstrip("-").replace("-", "_") for k in ctx.args[::2]], ctx.args[1::2])
@@ -411,3 +417,39 @@ def run(ctx, cpack: str, output_dir: str, help: bool, verbose: int):
                 console.print(f"{i}: {value}")
         else:
             console.print(results)
+
+
+@main.command(name="build-bento")
+@click.option("--name", help="Name of the bento service")
+@click.option("--version", help="Version of the bento service")
+@click.argument("source")
+def bento_cmd(source: str, name: str | None, version: str | None):
+    """Build a bento from the source, which can be either a .cpack.zip file or a bento tag."""
+    import bentoml
+    from bentoml.bentos import BentoBuildConfig
+
+    from .package import build_bento
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        if source.endswith(".cpack.zip"):
+            name = name or os.path.basename(source).replace(".cpack.zip", "")
+            shutil.unpack_archive(source, temp_dir)
+            system_packages = None
+            include_default_system_packages = True
+        else:
+            existing_bento = bentoml.get(source)
+            name = name or existing_bento.tag.name
+            shutil.copytree(existing_bento.path, temp_dir, dirs_exist_ok=True)
+            build_config = BentoBuildConfig.from_bento_dir(
+                existing_bento.path_of("src")
+            )
+            system_packages = build_config.docker.system_packages
+            include_default_system_packages = False
+
+        build_bento(
+            name,
+            Path(temp_dir),
+            version=version,
+            system_packages=system_packages,
+            include_default_system_packages=include_default_system_packages,
+        )
