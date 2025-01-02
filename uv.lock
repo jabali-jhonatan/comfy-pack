@@ -523,13 +523,12 @@ wheels = [
 
 [[package]]
 name = "comfy-pack"
-version = "0.1.4.dev10+g1d19c05"
+version = "0.2.2.dev7+g5238115.d20241231"
 source = { editable = "." }
 dependencies = [
     { name = "bentoml" },
     { name = "click" },
     { name = "comfy-cli" },
-    { name = "pydantic" },
 ]
 
 [package.metadata]
@@ -537,7 +536,6 @@ requires-dist = [
     { name = "bentoml", specifier = ">=1.3.13" },
     { name = "click", specifier = ">=8.1.7" },
     { name = "comfy-cli", specifier = ">=1.2.8" },
-    { name = "pydantic", specifier = ">=2.9" },
 ]
 
 [[package]]

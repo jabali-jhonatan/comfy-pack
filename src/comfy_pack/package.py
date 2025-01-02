@@ -3,15 +3,23 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import urllib.parse
 import subprocess
 import sys
 import tempfile
 import threading
+import urllib.parse
 import urllib.request
-from .hash import get_sha256
 from pathlib import Path
-from .const import MODEL_DIR, COMFYUI_REPO
+from typing import TYPE_CHECKING
+
+from .const import COMFYUI_REPO, MODEL_DIR
+from .hash import get_sha256
+from .utils import get_self_git_commit
+
+if TYPE_CHECKING:
+    import bentoml
+
+COMFY_PACK_DIR = Path(__file__).parent
 
 
 def _clone_commit(url: str, commit: str, dir: Path, verbose: int = 0):
@@ -238,7 +246,7 @@ def create_model_symlink(global_path: Path, sha: str, target_path: Path, filenam
     os.symlink(source, target)
 
 
-def retrive_models(
+def retrieve_models(
     snapshot: dict,
     workspace: Path,
     download: bool = True,
@@ -387,7 +395,7 @@ def install(
             elif f.is_dir():
                 shutil.copytree(f, workspace / "input" / f.name, dirs_exist_ok=True)
 
-        retrive_models(
+        retrieve_models(
             snapshot,
             workspace,
             verbose=verbose,
@@ -405,4 +413,61 @@ def install(
             ) as _:
                 pass
 
-        retrive_models(snapshot, workspace, verbose=verbose, all_models=all_models)
+        retrieve_models(snapshot, workspace, verbose=verbose, all_models=all_models)
+
+
+required_files = ["snapshot.json", "requirements.txt"]
+
+
+def build_bento(
+    bento_name: str,
+    source_dir: Path,
+    *,
+    version: str | None = None,
+    system_packages: list[str] | None = None,
+    include_default_system_packages: bool = True,
+) -> bentoml.Bento:
+    import bentoml
+
+    for f in required_files:
+        if not (source_dir / f).exists():
+            raise FileNotFoundError(f"Not a valid comfy-pack package: missing `{f}`")
+
+    if include_default_system_packages:
+        system_packages = [
+            "git",
+            "libglib2.0-0",
+            "libsm6",
+            "libxrender1",
+            "libxext6",
+            "ffmpeg",
+            "libstdc++-12-dev",
+            *(system_packages or []),
+        ]
+    else:
+        system_packages = system_packages or []
+
+    shutil.copy2(Path(__file__).with_name("service.py"), source_dir / "service.py")
+    # Copy comfy-pack package
+    shutil.copytree(
+        COMFY_PACK_DIR, source_dir / COMFY_PACK_DIR.name, dirs_exist_ok=True
+    )
+    snapshot = json.loads((source_dir / "snapshot.json").read_text())
+    return bentoml.build(
+        "service:ComfyService",
+        name=bento_name,
+        version=version,
+        build_ctx=str(source_dir),
+        labels={"comfy-pack-version": get_self_git_commit() or "unknown"},
+        models=[
+            m["model_tag"]
+            for m in snapshot["models"]
+            if "model_tag" in m and not m.get("disabled", False)
+        ],
+        docker={
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",
+            "system_packages": system_packages,
+            "setup_script": Path(__file__).with_name("setup_workspace.py").as_posix(),
+        },
+        python={"requirements_txt": "requirements.txt", "lock_packages": True},
+    )
