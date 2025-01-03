@@ -195,6 +195,7 @@ async def _get_custom_nodes() -> list:
             "url": url,
             "commit_hash": commit_hash,
             "disabled": subdir.name.endswith(".disabled"),
+            "path": str(subdir.relative_to(custom_nodes)),
         }
 
     for subdir in Path(custom_nodes).iterdir():
@@ -530,7 +531,9 @@ async def build_bento_api(request):
         # create a bento
         try:
             bento = build_bento(
-                data["bento_name"], temp_dir_path, data.get("system_packages")
+                data["bento_name"],
+                temp_dir_path,
+                data.get("system_packages"),
             )
         except bentoml.exceptions.BentoMLException as e:
             return web.json_response(
