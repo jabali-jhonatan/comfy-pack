@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import cast
 
@@ -31,6 +32,7 @@ def _ensure_uv() -> None:
 
 
 @click.group()
+@click.version_option()
 def main():
     """comfy-pack CLI"""
     pass
@@ -352,10 +354,8 @@ def run(ctx, cpack: str, output_dir: str, help: bool, verbose: int):
 
     console = Console()
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        pack_dir = Path(temp_dir) / ".cpack"
-        shutil.unpack_archive(cpack, pack_dir)
-        workflow = json.loads((pack_dir / "workflow_api.json").read_text())
+    with zipfile.ZipFile(cpack) as z:
+        workflow = json.loads(z.read("workflow_api.json"))
 
     input_model = generate_input_model(workflow)
 
@@ -480,7 +480,7 @@ def setup_cloud_client(
 @click.option(
     "-w",
     "--workspace",
-    type=click.Path(file_okay=False),
+    type=click.Path(file_okay=False, path_type=Path),
     default="workspace",
     help="Workspace directory, defaults to './workspace'.",
 )
@@ -491,40 +491,45 @@ def setup_cloud_client(
     expose_value=False,
     callback=setup_cloud_client,
 )
-def unpack_bento(bento: str, workspace: str, verbose: int):
+def unpack_bento(bento: str, workspace: Path, verbose: int):
     """Restore the ComfyUI workspace from a given bento."""
     import bentoml
 
     from .package import install_comfyui, install_custom_modules, install_dependencies
 
-    bento_obj = bentoml.get(bento)
-    comfy_workspace = Path(workspace)
-    comfy_workspace.parent.mkdir(parents=True, exist_ok=True)
-    if not comfy_workspace.joinpath(".DONE").exists():
+    try:
+        bento_obj = bentoml.get(bento)
+    except bentoml.exceptions.NotFound:
+        click.echo(
+            f"Bento {bento} not found in the local repository, trying to pull from BentoCloud",
+            err=True,
+        )
+        bentoml.pull(bento)
+        bento_obj = bentoml.get(bento)
+    workspace.parent.mkdir(parents=True, exist_ok=True)
+    if not workspace.joinpath(".DONE").exists():
         for model in bento_obj.info.models:
             model.to_model().resolve()
         snapshot = json.loads(Path(bento_obj.path_of("src/snapshot.json")).read_text())
-        install_comfyui(snapshot, comfy_workspace, verbose=verbose)
+        install_comfyui(snapshot, workspace, verbose=verbose)
         reqs_txt = bento_obj.path_of("env/python/requirements.txt")
         if sys.platform != "linux":
             src_reqs_txt = bento_obj.path_of("src/requirements.txt")
             if os.path.exists(src_reqs_txt):
                 click.echo("Using requirements.txt from src directory")
                 reqs_txt = src_reqs_txt
-        install_dependencies(snapshot, reqs_txt, comfy_workspace, verbose=verbose)
+        install_dependencies(snapshot, reqs_txt, workspace, verbose=verbose)
 
         for f in Path(bento_obj.path_of("src/input")).glob("*"):
             if f.is_file():
-                shutil.copy(f, comfy_workspace / "input" / f.name)
+                shutil.copy(f, workspace / "input" / f.name)
             elif f.is_dir():
-                shutil.copytree(
-                    f, comfy_workspace / "input" / f.name, dirs_exist_ok=True
-                )
-        install_custom_modules(snapshot, comfy_workspace, verbose=verbose)
+                shutil.copytree(f, workspace / "input" / f.name, dirs_exist_ok=True)
+        install_custom_modules(snapshot, workspace, verbose=verbose)
         for model in snapshot["models"]:
             if model.get("disabled", False):
                 continue
-            model_path = comfy_workspace / cast(str, model["filename"])
+            model_path = workspace / cast(str, model["filename"])
             if model_path.exists():
                 continue
             if model_tag := model.get("model_tag"):
@@ -535,14 +540,14 @@ def unpack_bento(bento: str, workspace: str, verbose: int):
                 model_path.symlink_to(model_file)
             else:
                 click.echo("WARN: Unrecognized model source, the model may be missing")
-        comfy_workspace.joinpath(".DONE").touch()
+        workspace.joinpath(".DONE").touch()
 
     if os.name == "nt":
         exe = "Scripts/python.exe"
     else:
         exe = "bin/python"
     click.echo(
-        f"Workspace is ready at {comfy_workspace}\n"
-        f"You can start ComfyUI by running `cd {comfy_workspace} && .venv/{exe} main.py`",
+        f"Workspace is ready at {workspace}\n"
+        f"You can start ComfyUI by running `cd {workspace} && .venv/{exe} main.py`",
         color="green",
     )
