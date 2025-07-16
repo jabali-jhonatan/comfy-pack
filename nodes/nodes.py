@@ -15,17 +15,58 @@ from comfy_extras.nodes_audio import SaveAudio
 from comfy_extras.nodes_video import SaveVideo
 from PIL import Image, ImageOps, ImageSequence, PngImagePlugin
 from PIL.PngImagePlugin import PngInfo
+from comfy.comfy_types import IO
+from tempfile import NamedTemporaryFile
 
 from .monkeypatch import set_bentoml_output
 
 
-# AnyType class hijacks the isinstance, issubclass, bool, str, jsonserializable, eq, ne methods to always return True
+# AnyType class hijacks the isinstance, issubclass, bool, str,
+# jsonserializable, eq, ne methods to always return True
 class AnyType(str):
     def __ne__(self, __value: object) -> bool:
         return False
 
 
 anytype = AnyType("*")  # when a != b is called, it will always return False
+
+
+def create_zip_with_text(
+    zip_path,
+    items,
+    text,
+    item_processor,
+    filename_pattern
+):
+    """
+    Generic function to create a zip file with items and text files.
+
+    Args:
+        zip_path: Path to the zip file to create
+        items: List of items to process (images, videos, etc.)
+        text: Text content to include with each item
+        item_processor: Function that takes (item, index) and returns
+                       (filename, bytes or file path)
+        filename_pattern: Pattern for text files (e.g., "text_{:05}.txt")
+    """
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for idx, item in enumerate(items):
+            # Process the item (image, video, etc.)
+            item_filename, item_data = item_processor(item, idx)
+
+            if isinstance(item_data, bytes):
+                # Write bytes directly
+                zipf.writestr(item_filename, item_data)
+            else:
+                # Add file from path
+                zipf.write(item_data, item_filename)
+                # Clean up temp file if needed
+                if os.path.exists(item_data):
+                    os.unlink(item_data)
+
+            # Write text file
+            text_filename = filename_pattern.format(idx)
+            zipf.writestr(text_filename, text)
 
 
 class OutputFile:
@@ -70,10 +111,10 @@ def get_save_image_path(
 ) -> tuple[str, str, int, str, str]:
     def map_filename(filename: str) -> tuple[int, str]:
         prefix_len = len(os.path.basename(filename_prefix))
-        prefix = filename[: prefix_len + 1]
+        prefix = filename[:prefix_len + 1]
         try:
-            digits = int(filename[prefix_len + 1 :].split("_")[0])
-        except:
+            digits = int(filename[prefix_len + 1:].split("_")[0])
+        except Exception:
             digits = 0
         return digits, prefix
 
@@ -86,8 +127,9 @@ def get_save_image_path(
         counter = (
             max(
                 filter(
-                    lambda a: os.path.normcase(a[1][:-1]) == os.path.normcase(filename)
-                    and a[1][-1] == "_",
+                    lambda a: (os.path.normcase(a[1][:-1]) ==
+                               os.path.normcase(filename) and
+                               a[1][-1] == "_"),
                     map(map_filename, os.listdir(full_output_folder)),
                 )
             )[0]
@@ -132,12 +174,14 @@ class OutputImage:
     DESCRIPTION = "Saves the input images to your ComfyUI output directory."
 
     def save_images(
-        self, images, filename_prefix="cpack_output_", prompt=None, extra_pnginfo=None
+        self, images, filename_prefix="cpack_output_",
+        prompt=None, extra_pnginfo=None
     ):
         filename_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
             get_save_image_path(
-                filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
+                filename_prefix, self.output_dir,
+                images[0].shape[1], images[0].shape[0]
             )
         )
         results = list()
@@ -153,7 +197,8 @@ class OutputImage:
                 for x in extra_pnginfo:
                     metadata.add_text(x, json.dumps(extra_pnginfo[x]))
 
-            filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
+            filename_with_batch_num = filename.replace(
+                "%batch_num%", str(batch_number))
             file = f"{filename_with_batch_num}_{counter:05}_.png"
             img.save(
                 os.path.join(full_output_folder, file),
@@ -198,7 +243,8 @@ class OutputImageWithStringTxt:
 
     CATEGORY = "ComfyPack/output"
     DESCRIPTION = (
-        "Saves the input images (and optional text) to your ComfyUI output directory."
+        "Saves the input images (and optional text) "
+        "to your ComfyUI output directory."
     )
 
     def save_images(
@@ -212,7 +258,8 @@ class OutputImageWithStringTxt:
         filename_prefix += self.prefix_append
         full_output_folder, filename, counter, subfolder, filename_prefix = (
             get_save_image_path(
-                filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
+                filename_prefix, self.output_dir,
+                images[0].shape[1], images[0].shape[0]
             )
         )
 
@@ -220,41 +267,44 @@ class OutputImageWithStringTxt:
         zip_filename = f"{filename}_batch_{base_counter:05}.zip"
         zip_path = os.path.join(full_output_folder, zip_filename)
 
-        # create ZIP file
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for batch_number, image in enumerate(images):
-                # temp store img to RAM
-                i = 255.0 * image.cpu().numpy()
-                img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+        def process_image(image, idx):
+            # temp store img to RAM
+            i = 255.0 * image.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
 
-                # write meta data
-                metadata = PngImagePlugin.PngInfo()
-                if prompt is not None:
-                    metadata.add_text("prompt", json.dumps(prompt))
-                if extra_pnginfo is not None:
-                    for x in extra_pnginfo:
-                        metadata.add_text(x, json.dumps(extra_pnginfo[x]))
+            # write meta data
+            metadata = PngImagePlugin.PngInfo()
+            if prompt is not None:
+                metadata.add_text("prompt", json.dumps(prompt))
+            if extra_pnginfo is not None:
+                for x in extra_pnginfo:
+                    metadata.add_text(x, json.dumps(extra_pnginfo[x]))
 
-                # write img file to RAM buffer
-                img_buffer = BytesIO()
-                img.save(
-                    img_buffer,
-                    format="PNG",
-                    pnginfo=metadata,
-                    compress_level=self.compress_level,
-                )
-                img_buffer.seek(0)
+            # write img file to RAM buffer
+            img_buffer = BytesIO()
+            img.save(
+                img_buffer,
+                format="PNG",
+                pnginfo=metadata,
+                compress_level=self.compress_level,
+            )
+            img_buffer.seek(0)
 
-                # write img into ZIP file
-                image_filename = f"image_{batch_number:05}.png"
-                zipf.writestr(image_filename, img_buffer.read())
+            image_filename = f"image_{idx:05}.png"
+            return image_filename, img_buffer.read()
 
-                # write txt into ZIP file
-                text_filename = f"text_{batch_number:05}.txt"
-                zipf.writestr(text_filename, text)
+        # Create ZIP using helper function
+        create_zip_with_text(
+            zip_path,
+            images,
+            text,
+            process_image,
+            "text_{:05}.txt"
+        )
 
         # return zip as output
-        out = [{"filename": zip_filename, "subfolder": subfolder, "type": "zip"}]
+        out = [{"filename": zip_filename,
+                "subfolder": subfolder, "type": "zip"}]
         return {
             "ui": {
                 "zip": out,
@@ -421,7 +471,7 @@ class IntInput:
     @classmethod
     def VALIDATE_INPUTS(s, value, min=None, max=None):
         if min is not None and max is not None and min > max:
-            return f"Value must be greater than or equal to {min}"
+            return f"Value must be less than or equal to {max}"
         set_bentoml_output([(value,)])
         return True
 
@@ -486,6 +536,157 @@ class OutputVideo(SaveVideo):
     CATEGORY = "ComfyPack/output"
 
 
+class VideoList:
+    COLOR = (142, 36, 170)
+
+    @classmethod
+    def INPUT_TYPES(s):
+        inputs = {
+            "required": {
+                "video1": (IO.VIDEO, {
+                    "tooltip": "First video (required)"
+                }),
+            },
+            "optional": {}
+        }
+
+        # Add optional video inputs (up to 10 total)
+        for i in range(2, 11):
+            inputs["optional"][f"video{i}"] = (IO.VIDEO, {
+                "tooltip": f"Video {i} (optional)"
+            })
+
+        return inputs
+
+    RETURN_TYPES = ("VIDEO_LIST",)
+    RETURN_NAMES = ("videos",)
+    FUNCTION = "create_list"
+    CPACK_NODE = True
+    CATEGORY = "ComfyPack/utility"
+    DESCRIPTION = (
+        "Combine multiple individual videos into a list. "
+        "Connect video outputs to the inputs to create a batch."
+    )
+
+    def create_list(self, video1, **kwargs):
+        """Collect all provided videos into a list."""
+        videos = [video1]
+
+        # Add any additional videos from optional inputs
+        for i in range(2, 11):
+            video_key = f"video{i}"
+            if video_key in kwargs and kwargs[video_key] is not None:
+                videos.append(kwargs[video_key])
+
+        return (videos,)
+
+
+class OutputVideoWithStringTxt:
+    COLOR = (142, 36, 170)
+
+    def __init__(self):
+        self.output_dir = folder_paths.get_output_directory()
+        self.type = "output"
+        self.prefix_append = ""
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "videos": ("VIDEO_LIST,VIDEO", {
+                    "tooltip": "Video or list of videos to save."
+                }),
+                "filename_prefix": ("STRING", {"default": "cpack_output_"}),
+                "text": ("STRING", {"default": ""}),
+            },
+            "hidden": {
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO",
+            },
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "save_videos"
+    CPACK_NODE = True
+    OUTPUT_NODE = True
+
+    CATEGORY = "ComfyPack/output"
+    DESCRIPTION = (
+        "Saves the input videos (and optional text) "
+        "to your ComfyUI output directory as a zip file."
+    )
+
+    def save_videos(
+        self,
+        videos,
+        filename_prefix="cpack_output_",
+        text="",
+        prompt=None,
+        extra_pnginfo=None,
+    ):
+        if not isinstance(videos, list):
+            videos = [videos]
+
+        filename_prefix += self.prefix_append
+        # Get path using first video dimensions
+        width, height = videos[0].get_dimensions()
+        full_output_folder, filename, counter, subfolder, filename_prefix = (
+            get_save_image_path(
+                filename_prefix, self.output_dir,
+                width, height
+            )
+        )
+
+        base_counter = counter  # use for name zip
+        zip_filename = f"{filename}_video_batch_{base_counter:05}.zip"
+        zip_path = os.path.join(full_output_folder, zip_filename)
+
+        def process_video(video, idx):
+            # Save video to temporary file
+            temp_file = NamedTemporaryFile(
+                suffix=".mp4",
+                delete=False,
+                dir=full_output_folder
+            )
+            temp_file.close()
+
+            # Save metadata if provided
+            metadata = {}
+            if prompt is not None:
+                metadata["prompt"] = prompt
+            if extra_pnginfo is not None:
+                metadata.update(extra_pnginfo)
+
+            # Save video to temp file
+            video.save_to(
+                temp_file.name,
+                format="auto",
+                codec="auto",
+                metadata=metadata if metadata else None
+            )
+
+            video_filename = f"video_{idx:05}.mp4"
+            return video_filename, temp_file.name
+
+        # Create ZIP using helper function
+        create_zip_with_text(
+            zip_path,
+            videos,
+            text,
+            process_video,
+            "text_{:05}.txt"
+        )
+
+        # return zip as output
+        out = [{"filename": zip_filename,
+                "subfolder": subfolder, "type": "zip"}]
+        return {
+            "ui": {
+                "zip": out,
+            }
+        }
+
+
 class OutputTextFile:
     @classmethod
     def INPUT_TYPES(cls):
@@ -506,24 +707,27 @@ class OutputTextFile:
     CPACK_NODE = True
 
     def save_text_file(
-        self, text: str, filename_prefix: str, file_extension: str = ".txt"
+        self, text, filename_prefix, file_extension=".txt"
     ):
-        subfolder, filename_prefix = os.path.split(os.path.normpath(filename_prefix))
+        subfolder, filename_prefix = os.path.split(
+            os.path.normpath(filename_prefix))
         output_dir = folder_paths.get_output_directory()
         full_output_folder = os.path.join(output_dir, subfolder)
 
         full_output_filename = self.get_output_filename(
             full_output_folder, filename_prefix, file_extension
         )
-        with open(full_output_filename, "w", encoding="utf-8", newline="\n") as f:
+        with open(full_output_filename, "w",
+                  encoding="utf-8", newline="\n") as f:
             f.write(text)
         return (text, {"ui": {"string": text}})
 
     @staticmethod
-    def get_output_filename(folder: str, prefix: str, extension: str) -> str:
+    def get_output_filename(folder, prefix, extension):
         matched_files = [
-            os.path.basename(f)[len(prefix) + 1 : -len(extension)]
-            for f in glob.glob(os.path.join(folder, f"{prefix}_*{extension}"))
+            os.path.basename(f)[len(prefix) + 1:-len(extension)]
+            for f in glob.glob(
+                os.path.join(folder, f"{prefix}_*{extension}"))
         ]
         print("MATCHING", matched_files)
         max_count = max(
@@ -538,6 +742,8 @@ NODE_CLASS_MAPPINGS = {
     "CPackOutputAudio": OutputAudio,
     "CPackOutputVideo": OutputVideo,
     "CPackOutputZip": OutputImageWithStringTxt,
+    "CPackOutputVideoZip": OutputVideoWithStringTxt,
+    "CPackVideoList": VideoList,
     "CPackOutputZipSwitch": OutputZip,
     "CPackInputImage": ImageInput,
     "CPackInputString": StringInput,
@@ -558,6 +764,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "CPackOutputVideo": "Video Output",
     "CPackOutputFile": "File Output",
     "CPackOutputZip": "Zip Output(img + txt file)",
+    "CPackOutputVideoZip": "Zip Output(video + txt file)",
+    "CPackVideoList": "Video List",
     "CPackOutputZipSwitch": "Enable Zip Output",
     "CPackOutputTextFile": "Output Text to File",
 }
